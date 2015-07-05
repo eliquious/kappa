@@ -1,0 +1,2 @@
+# kappa
+Stream processing platform
