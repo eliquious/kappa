@@ -11,7 +11,6 @@ import (
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
     "github.com/subsilent/kappa/ssh"
-    "github.com/subsilent/kappa/utils"
     crypto "golang.org/x/crypto/ssh"
 )
 
@@ -80,15 +79,22 @@ var ServerCmd = &cobra.Command{
             return
         }
 
-        runner := utils.TaskRunner{}
-        runner.AddTasks(sshServer)
+        // Setup signal structures
+        closer := make(chan bool)
+        sshServer.Run(logger, closer)
 
         // Handle signals
         sig := make(chan os.Signal, 1)
         signal.Notify(sig, os.Interrupt, os.Kill)
 
         // Wait for signal
-        runner.Run(logger, sig)
+        logger.Info("Ready to serve requests")
+        <-sig
+
+        // Shut down SSH server
+        logger.Info("Shutting down servers.")
+        sshServer.Wait()
+        <-closer
     },
 }
 
