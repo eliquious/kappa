@@ -28,6 +28,7 @@ func NewSSHServer(logger log.Logger, db core.KeyValueDatabase, privateKey ssh.Si
 
     // Create data store
     // metaKeyspace, err := db.GetOrCreateKeyspace("meta")
+    // keys := db.GetOrCreateKeyspace("public-keys")
 
     // Create server config
     sshConfig := &ssh.ServerConfig{
@@ -65,22 +66,29 @@ func NewSSHServer(logger log.Logger, db core.KeyValueDatabase, privateKey ssh.Si
     server.logger = logger
     server.sshConfig = sshConfig
     server.listener = listener
+    server.authenticator = func(conn *ssh.ServerConn) bool {
+        // logger.Info("Accepted connection.")
+        return true
+
+        // username := keys.Get(conn.Permissions.Extensions["pubkey"])
+    }
     return
 }
 
 type SSHServer struct {
-    logger    log.Logger
-    sshConfig *ssh.ServerConfig
-    listener  *net.TCPListener
-    done      chan bool
+    logger        log.Logger
+    sshConfig     *ssh.ServerConfig
+    listener      *net.TCPListener
+    authenticator AuthConnectionHandler
+    done          chan bool
 }
 
-func (s SSHServer) Run(logger log.Logger, closer <-chan bool) {
+func (s *SSHServer) Run(logger log.Logger, closer chan<- bool) {
     logger.Info("Starting SSH server", "addr", viper.GetString("SSHAdvertise"))
     s.done = make(chan bool)
 
     // Start server
-    go func(l log.Logger, sock *net.TCPListener, config *ssh.ServerConfig, c <-chan bool, complete chan<- bool) {
+    go func(l log.Logger, sock *net.TCPListener, config *ssh.ServerConfig, c <-chan bool, complete chan<- bool, auth AuthConnectionHandler) {
         defer sock.Close()
         for {
 
@@ -109,14 +117,17 @@ func (s SSHServer) Run(logger log.Logger, closer <-chan bool) {
 
                 // Handle connection
                 l.Debug("Successful SSH connection")
-                go handleTCPConnection(l, tcpConn, config)
+                go handleTCPConnection(l, tcpConn, config, auth)
             }
         }
-    }(logger, s.listener, s.sshConfig, closer, s.done)
+    }(logger, s.listener, s.sshConfig, s.done, closer, s.authenticator)
+
+    // return done
 }
 
-func (s SSHServer) Wait() {
-    <-s.done
+func (s *SSHServer) Wait() {
+    s.done <- true
+    // <-closer
 }
 
 func generateToken(length int) (token string, err error) {

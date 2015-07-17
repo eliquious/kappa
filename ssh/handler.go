@@ -7,12 +7,18 @@ import (
     "golang.org/x/crypto/ssh"
 )
 
-func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.ServerConfig) {
+// AuthConnectionHandler validates connections against user accounts
+type AuthConnectionHandler func(*ssh.ServerConn) bool
+
+func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.ServerConfig, auth AuthConnectionHandler) {
 
     // Open SSH connection
     sshConn, channels, requests, err := ssh.NewServerConn(tcpConn, sshConfig)
     if err != nil {
         logger.Warn("SSH handshake failed")
+        return
+    } else if !auth(sshConn) {
+        logger.Warn("Unauthenticated client. Closing connection.")
         return
     }
     logger.Debug("Handshake successful")
@@ -23,7 +29,7 @@ func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.Ser
 
     for ch := range channels {
         t := ch.ChannelType()
-        if t != "session" {
+        if t != "kappa-client" {
             ch.Reject(ssh.UnknownChannelType, t)
             continue
         }
@@ -35,32 +41,35 @@ func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.Ser
             continue
         }
 
-        for req := range requests {
-            if req.Type == "shell" {
-                req.Reply(true, nil)
-                // pubkey := []byte(sshConn.Permissions.Extensions["pubkey"])
-                // url, err := handler(pubkey)
+        go handleChannelRequests(channel, requests)
+    }
+}
 
-                // Failed to generate URL
-                // if err != nil {
-                //     logger.Warn("Failed to generate URL", "error", err)
-                //     channel.Stderr().Write([]byte("Oh No! Something went wrong!"))
-                // } else {
+func handleChannelRequests(channel ssh.Channel, requests <-chan *ssh.Request) {
+    defer channel.Close()
 
-                //     // We're not loggin who logged in on purpose
-                //     logger.Info("Successful login via SSH")
-                //     fmt.Fprintln(channel, fmt.Sprintf("URL:\n%s\n", url))
-                // }
+    for req := range requests {
+        if req.Type == "query" {
 
-                break
-            } else {
-                if req.WantReply {
-                    req.Reply(false, nil)
-                }
+            req.Reply(true, nil)
+            // pubkey := []byte(sshConn.Permissions.Extensions["pubkey"])
+            // url, err := handler(pubkey)
+
+            // Failed to generate URL
+            // if err != nil {
+            //     logger.Warn("Failed to generate URL", "error", err)
+            //     channel.Stderr().Write([]byte("Oh No! Something went wrong!"))
+            // } else {
+
+            //     // We're not loggin who logged in on purpose
+            //     logger.Info("Successful login via SSH")
+            //     fmt.Fprintln(channel, fmt.Sprintf("URL:\n%s\n", url))
+            // }
+            // break
+        } else {
+            if req.WantReply {
+                req.Reply(false, nil)
             }
         }
-
-        // close channel
-        channel.Close()
     }
 }
