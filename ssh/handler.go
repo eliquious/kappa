@@ -1,19 +1,22 @@
 package ssh
 
 import (
+    "fmt"
     "net"
+    "strings"
 
     log "github.com/mgutz/logxi/v1"
     "golang.org/x/crypto/ssh"
+    "golang.org/x/crypto/ssh/terminal"
 )
 
 // AuthConnectionHandler validates connections against user accounts
 type AuthConnectionHandler func(*ssh.ServerConn) bool
 
-func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.ServerConfig, auth AuthConnectionHandler) {
+func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig, auth AuthConnectionHandler) {
 
     // Open SSH connection
-    sshConn, channels, requests, err := ssh.NewServerConn(tcpConn, sshConfig)
+    sshConn, channels, requests, err := ssh.NewServerConn(conn, sshConfig)
     if err != nil {
         logger.Warn("SSH handshake failed")
         return
@@ -29,47 +32,107 @@ func handleTCPConnection(logger log.Logger, tcpConn net.Conn, sshConfig *ssh.Ser
 
     for ch := range channels {
         t := ch.ChannelType()
-        if t != "kappa-client" {
+
+        if t != "session" && t != "kappa-client" {
+            logger.Info("UnknownChannelType", "type", t)
             ch.Reject(ssh.UnknownChannelType, t)
-            continue
+            break
         }
 
         // Accept channel
         channel, requests, err := ch.Accept()
         if err != nil {
-            logger.Warn("Invalid channel")
+            logger.Warn("Error creating channel")
             continue
         }
 
-        go handleChannelRequests(channel, requests)
+        if t == "session" {
+            go handleSessionRequests(logger, channel, requests)
+        } else if t == "kappa-client" {
+            go handleChannelRequests(logger, channel, requests)
+        }
     }
 }
 
-func handleChannelRequests(channel ssh.Channel, requests <-chan *ssh.Request) {
+func handleChannelRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request) {
     defer channel.Close()
 
     for req := range requests {
-        if req.Type == "query" {
-
+        if req.Type == "skl" {
+            logger.Info("SKL request", "request", string(req.Payload))
             req.Reply(true, nil)
-            // pubkey := []byte(sshConn.Permissions.Extensions["pubkey"])
-            // url, err := handler(pubkey)
-
-            // Failed to generate URL
-            // if err != nil {
-            //     logger.Warn("Failed to generate URL", "error", err)
-            //     channel.Stderr().Write([]byte("Oh No! Something went wrong!"))
-            // } else {
-
-            //     // We're not loggin who logged in on purpose
-            //     logger.Info("Successful login via SSH")
-            //     fmt.Fprintln(channel, fmt.Sprintf("URL:\n%s\n", url))
-            // }
-            // break
         } else {
             if req.WantReply {
                 req.Reply(false, nil)
             }
+        }
+    }
+}
+
+func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request) {
+    defer channel.Close()
+
+    // Sessions have out-of-band requests such as "shell",
+    // "pty-req" and "env".  Here we handle only the
+    // "shell" request.
+    for req := range requests {
+
+        ok := false
+        switch req.Type {
+        case "shell":
+            ok = true
+
+            if len(req.Payload) > 0 {
+                fmt.Println(string(req.Payload))
+                // We don't accept any
+                // commands, only the
+                // default shell.
+                ok = false
+            }
+
+        case "pty-req":
+            // Responding 'ok' here will let the client
+            // know we have a pty ready for input
+            ok = true
+
+            go startTerminal(logger, channel)
+        default:
+            // fmt.Println("default req: ", req)
+        }
+
+        req.Reply(ok, nil)
+    }
+}
+
+func startTerminal(logger log.Logger, channel ssh.Channel) {
+    defer channel.Close()
+    term := terminal.NewTerminal(channel, "kappa > ")
+
+    // // Try to make the terminal raw
+    // oldState, err := terminal.MakeRaw(0)
+    // if err != nil {
+    //     logger.Warn("Error making terminal raw: ", err.Error())
+    // }
+    // defer terminal.Restore(0, oldState)
+
+    for {
+        line, err := term.ReadLine()
+        if err != nil {
+            fmt.Errorf("Readline() error")
+            break
+        }
+
+        // Process line
+        if len(line) > 0 {
+            logger.Info("Request", "data", strings.TrimSpace(line))
+            if line == "exit" || line == "quit" {
+                break
+            }
+
+            channel.Write(term.Escape.Green)
+            channel.Write([]byte(line))
+            channel.Write([]byte("\r\n"))
+            channel.Write(term.Escape.Reset)
         }
     }
 }
