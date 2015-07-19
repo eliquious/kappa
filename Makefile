@@ -53,7 +53,7 @@ run: export LOGXI_FORMAT = happy,t=2006-01-02 15:04:05.000000
 run: export GIN_MODE=release
 run: env build
 	@mkdir -p $(datadir)
-	./$(binary) server --http-listen=:19022 --ssh-listen=:9022 -D=data --ssh-key=pki/private/localhost.key
+	./$(binary) server --http-listen=:19022 --ssh-listen=:9022 -D=data --ssh-key=pki/private/localhost.key --ca-cert=pki/ca.crt
 
 docker: export GOOS=linux
 docker: export CGO_ENABLED=0
