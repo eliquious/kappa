@@ -1,6 +1,7 @@
 package commands
 
 import (
+    "crypto/x509"
     "io/ioutil"
     "os"
     "os/signal"
@@ -11,7 +12,7 @@ import (
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
     "github.com/subsilent/kappa/ssh"
-    crypto "golang.org/x/crypto/ssh"
+    crypto_ssh "golang.org/x/crypto/ssh"
 )
 
 // ServerCmd is the subsilent root command.
@@ -56,24 +57,29 @@ var ServerCmd = &cobra.Command{
         sshKeyFile := viper.GetString("SSHKey")
         logger.Info("Reading private key", "file", sshKeyFile)
 
-        // Read SSH Key
-        keyBytes, err := ioutil.ReadFile(sshKeyFile)
+        privateKey, err := readPrivateKey(logger, sshKeyFile)
         if err != nil {
-            logger.Error("Private key could not be read", "error", err)
             return
         }
 
-        // Get private key
-        privateKey, err := crypto.ParsePrivateKey(keyBytes)
+        // Read root cert
+        rootPem, err := ioutil.ReadFile(viper.GetString("CACert"))
         if err != nil {
-            logger.Error("Private key could not be parsed", "error", err)
+            logger.Error("root certificate could not be read", "filename", viper.GetString("CACert"))
+            return
+        }
+
+        // Create certificate pool
+        roots := x509.NewCertPool()
+        if ok := roots.AppendCertsFromPEM(rootPem); !ok {
+            logger.Error("failed to parse root certificate")
             return
         }
 
         // Setup SSH Server
         sshLogger := log.NewLogger(writer, "ssh")
 
-        sshServer, err := ssh.NewSSHServer(sshLogger, conn, privateKey)
+        sshServer, err := ssh.NewSSHServer(sshLogger, conn, privateKey, roots)
         if err != nil {
             logger.Error("SSH Server could not be configured", "error", err)
             return
@@ -104,6 +110,7 @@ var serverCmd *cobra.Command
 // Command line args
 var (
     SSHKey     string
+    CACert     string
     TLSCert    string
     TLSKey     string
     DataPath   string
@@ -114,6 +121,7 @@ var (
 func init() {
 
     ServerCmd.PersistentFlags().StringVarP(&SSHKey, "ssh-key", "", "", "Private key to identify server with")
+    ServerCmd.PersistentFlags().StringVarP(&CACert, "ca-cert", "", "", "Root Certificate")
     ServerCmd.PersistentFlags().StringVarP(&TLSCert, "tls-cert", "", "", "TLS certificate file")
     ServerCmd.PersistentFlags().StringVarP(&TLSKey, "tls-key", "", "", "TLS private key file")
     ServerCmd.PersistentFlags().StringVarP(&DataPath, "data", "D", "", "Data directory")
@@ -127,13 +135,18 @@ func InitializeServerConfig(logger log.Logger) error {
 
     // Load default settings
     logger.Info("Loading default server settings")
-    viper.SetDefault("SSHKey", "ssh-identity")
+    viper.SetDefault("CACert", "ca.crt")
+    viper.SetDefault("SSHKey", "ssh-identity.key")
     viper.SetDefault("TLSCert", "tls-identity.crt")
     viper.SetDefault("TLSKey", "tls-identity.key")
     viper.SetDefault("DataPath", "./data")
     viper.SetDefault("SSHListen", ":9022")
     viper.SetDefault("HTTPListen", ":19022")
 
+    if serverCmd.PersistentFlags().Lookup("ca-cert").Changed {
+        logger.Info("", "CACert", CACert)
+        viper.Set("CACert", CACert)
+    }
     if serverCmd.PersistentFlags().Lookup("ssh-key").Changed {
         logger.Info("", "SSHKey", SSHKey)
         viper.Set("SSHKey", SSHKey)
@@ -160,4 +173,20 @@ func InitializeServerConfig(logger log.Logger) error {
     }
 
     return nil
+}
+
+func readPrivateKey(logger log.Logger, keyFile string) (privateKey crypto_ssh.Signer, err error) {
+    // Read SSH Key
+    keyBytes, err := ioutil.ReadFile(keyFile)
+    if err != nil {
+        logger.Error("Private key could not be read", "error", err)
+        return
+    }
+
+    // Get private key
+    privateKey, err = crypto_ssh.ParsePrivateKey(keyBytes)
+    if err != nil {
+        logger.Error("Private key could not be parsed", "error", err)
+    }
+    return
 }
