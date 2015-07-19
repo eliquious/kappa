@@ -13,17 +13,15 @@ import (
 // AuthConnectionHandler validates connections against user accounts
 type AuthConnectionHandler func(*ssh.ServerConn) bool
 
-func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig, auth AuthConnectionHandler) {
+func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig) {
 
     // Open SSH connection
     sshConn, channels, requests, err := ssh.NewServerConn(conn, sshConfig)
     if err != nil {
         logger.Warn("SSH handshake failed")
         return
-    } else if !auth(sshConn) {
-        logger.Warn("Unauthenticated client. Closing connection.")
-        return
     }
+
     logger.Debug("Handshake successful")
     defer sshConn.Conn.Close()
 
