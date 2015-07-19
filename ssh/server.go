@@ -10,7 +10,7 @@ import (
     log "github.com/mgutz/logxi/v1"
     "github.com/spf13/viper"
 
-    "github.com/eliquious/core"
+    "github.com/subsilent/kappa/datamodel"
     "github.com/subsilent/zbase32"
     "golang.org/x/crypto/ssh"
 )
@@ -23,25 +23,33 @@ const (
     CsrfTokenLength     = 40
 )
 
-func NewSSHServer(logger log.Logger, db core.KeyValueDatabase, privateKey ssh.Signer, roots *x509.CertPool) (server SSHServer, err error) {
+func NewSSHServer(logger log.Logger, sys datamodel.System, privateKey ssh.Signer, roots *x509.CertPool) (server SSHServer, err error) {
 
-    // Create data store
-    // metaKeyspace, err := db.GetOrCreateKeyspace("meta")
-    // keys := db.GetOrCreateKeyspace("public-keys")
+    // Get user store
+    users := sys.Users()
 
     // Create server config
     sshConfig := &ssh.ServerConfig{
         NoClientAuth: false,
         PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (perm *ssh.Permissions, err error) {
 
-            user := conn.User()
+            // Get user if exists, otherwise return error
+            user, err := users.Get(conn.User())
+            if err != nil {
+                return
+            }
 
-            // TODO: Add auth check with UserStore and public keys
+            // Check keyring for public key
+            if keyring := user.KeyRing(); !keyring.Contains(key.Marshal()) {
+                err = fmt.Errorf("invalid public key")
+                return
+            }
 
+            // Add pubkey and username to permissions
             perm = &ssh.Permissions{
                 Extensions: map[string]string{
                     "pubkey":   string(key.Marshal()),
-                    "username": user,
+                    "username": conn.User(),
                 },
             }
             return
