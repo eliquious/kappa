@@ -1,6 +1,6 @@
 package datamodel
 
-import "github.com/mikespook/gorbac"
+import "github.com/eliquious/leaf"
 
 // PublicKey wraps an ssh.PublicKey and simply provides methods for validation.
 type PublicKey interface {
@@ -40,11 +40,11 @@ type User interface {
     // KeyRing returns a PublicKeyRing containing all of a user's public keys
     KeyRing() PublicKeyRing
 
-    // Permissions returns an interface for determining a user's accessibility for the given namespace
-    Permissions(namespace string) *gorbac.Rbac
-
     // Namespaces returns a list of namespaces for which the user has access
     Namespaces() []string
+
+    // Roles returns the user's roles for the given namespace
+    Roles(namespace string) []string
 }
 
 // UserStore stores all user information
@@ -58,4 +58,26 @@ type UserStore interface {
 
     // Delete removes a user account from a namespace
     Delete(username string) error
+}
+
+// NewBoltUserStore returns a UserStore backed by boltdb. If the user keyspace does not already exist, it will be created.
+func NewBoltUserStore(ks leaf.Keyspace) UserStore {
+    return &boltUserStore{ks}
+}
+
+// boltUserStore implements the UserStore interface
+type boltUserStore struct {
+    ks leaf.Keyspace
+}
+
+func (b boltUserStore) Create(name string) (User, error) {
+    return nil, nil
+}
+
+func (b boltUserStore) Get(name string) (User, error) {
+    return nil, nil
+}
+
+func (b boltUserStore) Delete(name string) error {
+    return nil
 }
