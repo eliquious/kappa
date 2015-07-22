@@ -1,18 +1,36 @@
 package datamodel
 
 import (
+    "crypto/sha256"
+    "crypto/x509"
+    "encoding/hex"
+    "encoding/pem"
+    "fmt"
+    "strings"
+
     "github.com/boltdb/bolt"
     "github.com/eliquious/leaf"
+    "golang.org/x/crypto/ssh"
 )
 
-// PublicKey wraps an ssh.PublicKey and simply provides methods for validation.
-type PublicKey interface {
+var (
+    ErrUserDoesNotExist = fmt.Errorf("user does not exist")
+)
 
-    // Fingerprint provides a string hash representing a PublicKey
-    Fingerprint() string
+// PublicKey wraps an ssh.PublicKey byte array and simply provides methods for validation.
+type PublicKey struct {
+    fingerprint []byte
+    sshKey      []byte
+}
 
-    // Equals determines the equivalence of two PublicKeys
-    Equals([]byte) bool
+// Fingerprint provides a string hash representing a PublicKey
+func (p *PublicKey) Fingerprint() string {
+    return string(p.fingerprint)
+}
+
+// Equals determines the equivalence of two PublicKeys
+func (p *PublicKey) Equals(key []byte) bool {
+    return SecureCompare(p.sshKey, key)
 }
 
 // PublicKeyRing provides an interface for interacting with a user's public keys
@@ -104,31 +122,281 @@ func (b boltUserStore) Delete(name string) (err error) {
 
 // boltUser implements the User interface on top of boltdb
 type boltUser struct {
-    name       []byte
-    namespaces leaf.Keyspace
+    name  []byte
+    users leaf.Keyspace
 }
 
 // ValidatePassword determines the validity of a password.
-func (b boltUser) ValidatePassword(password string) bool {
-    return false
+func (b boltUser) ValidatePassword(password string) (match bool) {
+    b.users.ReadTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.name)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get salt, if salt is nil return false.
+        // If the salt is nil, a user password has not been set
+        salt := user.Get([]byte("salt"))
+        if salt == nil {
+            return
+        }
+
+        // Get the salted password
+        saltedpw := user.Get([]byte("salted_password"))
+        if saltedpw == nil {
+            return
+        }
+
+        // Salt password
+        hash := sha256.New()
+        hash.Write(salt)
+        hash.Write([]byte(password))
+
+        // compare byte strings
+        match = SecureCompare(hash.Sum(nil), saltedpw)
+        return
+    })
+    return
 }
 
 // UpdatePassword updates a user's password. This password is only used to log into the web ui.
-func (b boltUser) UpdatePassword(password string) error {
-    return nil
+func (b boltUser) UpdatePassword(password string) (err error) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.name)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            err = ErrUserDoesNotExist
+            return
+        }
+
+        // Generate salt and salted password
+        salt, saltedpw, err := GenerateSalt([]byte(password))
+        if err != nil {
+            return
+        }
+
+        // Save salt
+        if err = user.Put([]byte("salt"), salt); err != nil {
+            return
+        }
+
+        // Save salted password
+        if err = user.Put([]byte("salted_password"), saltedpw); err != nil {
+            return
+        }
+        return
+    })
+    return
 }
 
 // KeyRing returns a PublicKeyRing containing all of a user's public keys
 func (b boltUser) KeyRing() PublicKeyRing {
-    return nil
+    return &boltKeyRing{b.name, b.users}
 }
 
 // Namespaces returns a list of namespaces for which the user has access
-func (b boltUser) Namespaces() []string {
-    return nil
+func (b boltUser) Namespaces() (ns []string) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.name)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get namespace sub-bucket
+        namespaces, err := user.CreateBucketIfNotExists([]byte("namespaces"))
+        if err != nil {
+            return
+        }
+
+        // Iterate and append namespace name
+        namespaces.ForEach(func(k []byte, _ []byte) error {
+            ns = append(ns, string(k))
+            return nil
+        })
+        return
+    })
+    return
 }
 
 // Roles returns the user's roles for the given namespace
-func (b boltUser) Roles(namespace string) []string {
+func (b boltUser) Roles(namespace string) (roles []string) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.name)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get namespace sub-bucket
+        namespaces, err := user.CreateBucketIfNotExists([]byte("namespaces"))
+        if err != nil {
+            return
+        }
+
+        // Get roles for the given namespace
+        namespaceRoles := namespaces.Get([]byte(namespace))
+        if len(namespaceRoles) > 0 {
+            roles = strings.Split(string(namespaceRoles), ",")
+        }
+        return
+    })
+    return
+}
+
+type boltKeyRing struct {
+    username []byte
+    users    leaf.Keyspace
+}
+
+// AddPublicKey simply adds a public key to the user's key ring
+func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (err error) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.username)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get keys sub-bucket
+        keys, err := user.CreateBucketIfNotExists([]byte("keys"))
+        if err != nil {
+            return
+        }
+
+        // Decode PEM bytes
+        block, _ := pem.Decode(pemBytes)
+        pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+        if err != nil {
+            return
+        }
+
+        // Convert Public Key to SSH format
+        sshKey, err := ssh.NewPublicKey(pub)
+        if err != nil {
+            return
+        }
+
+        // Convert key to bytes
+        key := sshKey.Marshal()
+
+        // Create Fingerprint
+        var fingerprint string
+        hexidecimal := hex.EncodeToString(key)
+        for i := 0; i < len(hexidecimal); i += 2 {
+            fingerprint += hexidecimal[i : i+2]
+            if i+2 < len(hexidecimal) {
+                fingerprint += ":"
+            }
+        }
+
+        // Write key to keys bucket
+        err = keys.Put([]byte(fingerprint), key)
+        return
+    })
     return nil
+}
+
+// RemovePublicKey will remove a public key from a user's key ring
+func (b *boltKeyRing) RemovePublicKey(fingerprint string) (err error) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.username)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get keys sub-bucket
+        keys, err := user.CreateBucketIfNotExists([]byte("keys"))
+        if err != nil {
+            return
+        }
+
+        // Delete finger print
+        err = keys.Delete([]byte(fingerprint))
+        return
+    })
+    return nil
+}
+
+// ListPublicKey returns all of a user's public keys
+func (b *boltKeyRing) ListPublicKeys() (publicKeys []PublicKey) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.username)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get keys sub-bucket
+        keys, err := user.CreateBucketIfNotExists([]byte("keys"))
+        if err != nil {
+            return
+        }
+
+        // Public keys are stored as fingerprint : key
+        keys.ForEach(func(k []byte, v []byte) error {
+            publicKeys = append(publicKeys, PublicKey{k, v})
+            return nil
+        })
+        return
+    })
+    return
+}
+
+// Contains determines if a key exists in the ring. The provided bytes should be the output of ssh.PublicKey.Marshal.
+func (b *boltKeyRing) Contains(key []byte) (exists bool) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        user := bkt.Bucket(b.username)
+
+        // If user is nil, the user does not exist
+        if user == nil {
+            return
+        }
+
+        // Get keys sub-bucket
+        keys, err := user.CreateBucketIfNotExists([]byte("keys"))
+        if err != nil {
+            return
+        }
+
+        // Create Fingerprint
+        var fingerprint string
+        hexidecimal := hex.EncodeToString(key)
+        for i := 0; i < len(hexidecimal); i += 2 {
+            fingerprint += hexidecimal[i : i+2]
+            if i+2 < len(hexidecimal) {
+                fingerprint += ":"
+            }
+        }
+
+        // Get fingerprint
+        exists = keys.Get([]byte(fingerprint)) != nil
+        return
+    })
+    return
 }
