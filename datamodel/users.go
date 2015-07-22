@@ -1,6 +1,9 @@
 package datamodel
 
-import "github.com/eliquious/leaf"
+import (
+    "github.com/boltdb/bolt"
+    "github.com/eliquious/leaf"
+)
 
 // PublicKey wraps an ssh.PublicKey and simply provides methods for validation.
 type PublicKey interface {
@@ -70,14 +73,62 @@ type boltUserStore struct {
     ks leaf.Keyspace
 }
 
-func (b boltUserStore) Create(name string) (User, error) {
-    return nil, nil
+// Create adds a user to the database
+func (b boltUserStore) Create(name string) (u User, err error) {
+    b.ks.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Create bucket
+        if _, err = bkt.CreateBucketIfNotExists([]byte(name)); err == nil {
+            u = boltUser{[]byte(name), b.ks}
+        }
+        return
+    })
+    return
 }
 
+// Get returns a User, creating it if doesn't exist
 func (b boltUserStore) Get(name string) (User, error) {
-    return nil, nil
+    return b.Create(name)
 }
 
-func (b boltUserStore) Delete(name string) error {
+// Delete removes a user from the database
+func (b boltUserStore) Delete(name string) (err error) {
+    b.ks.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Delete bucket
+        err = bkt.DeleteBucket([]byte(name))
+        return
+    })
+    return
+}
+
+// boltUser implements the User interface on top of boltdb
+type boltUser struct {
+    name       []byte
+    namespaces leaf.Keyspace
+}
+
+// ValidatePassword determines the validity of a password.
+func (b boltUser) ValidatePassword(password string) bool {
+    return false
+}
+
+// UpdatePassword updates a user's password. This password is only used to log into the web ui.
+func (b boltUser) UpdatePassword(password string) error {
+    return nil
+}
+
+// KeyRing returns a PublicKeyRing containing all of a user's public keys
+func (b boltUser) KeyRing() PublicKeyRing {
+    return nil
+}
+
+// Namespaces returns a list of namespaces for which the user has access
+func (b boltUser) Namespaces() []string {
+    return nil
+}
+
+// Roles returns the user's roles for the given namespace
+func (b boltUser) Roles(namespace string) []string {
     return nil
 }
