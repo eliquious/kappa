@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+    "crypto/md5"
     "crypto/sha256"
     "crypto/x509"
     "encoding/hex"
@@ -66,6 +67,12 @@ type User interface {
 
     // Roles returns the user's roles for the given namespace
     Roles(namespace string) []string
+
+    // AddRole appends a role to namespace
+    AddRole(namespace, role string) error
+
+    // RemoveRole removed a role for a namespace
+    RemoveRole(namespace, role string) error
 }
 
 // UserStore stores all user information
@@ -257,6 +264,16 @@ func (b boltUser) Roles(namespace string) (roles []string) {
     return
 }
 
+// AddRole appends a role to the given namespace
+func (b boltUser) AddRole(namespace, role string) error {
+    return nil
+}
+
+// RemoveRole removes the role from the given namespace
+func (b boltUser) RemoveRole(namespace, role string) error {
+    return nil
+}
+
 type boltKeyRing struct {
     username []byte
     users    leaf.Keyspace
@@ -296,9 +313,13 @@ func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (err error) {
         // Convert key to bytes
         key := sshKey.Marshal()
 
+        // Hash key
+        h := md5.New()
+        h.Write(key)
+
         // Create Fingerprint
         var fingerprint string
-        hexidecimal := hex.EncodeToString(key)
+        hexidecimal := hex.EncodeToString(h.Sum(nil))
         for i := 0; i < len(hexidecimal); i += 2 {
             fingerprint += hexidecimal[i : i+2]
             if i+2 < len(hexidecimal) {
