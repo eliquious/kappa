@@ -14,10 +14,14 @@ import (
 )
 
 var (
+
+    // ErrUserDoesNotExist signifies that a user does not exist
     ErrUserDoesNotExist = fmt.Errorf("user does not exist")
 
+    // ErrInvalidCertificate is returned when the certificate can't be decoded
     ErrInvalidCertificate = fmt.Errorf("unable to load certificate")
 
+    // ErrFailedKeyConvertion means that the public key could not be converted to an SSH key
     ErrFailedKeyConvertion = fmt.Errorf("error converting public key to SSH key format")
 )
 

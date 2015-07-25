@@ -281,15 +281,15 @@ func (suite *UserTestSuite) TestUpdatePassword() {
         salt := userBucket.Get([]byte("salt"))
         suite.NotNil(salt)
 
-        salted_password := userBucket.Get([]byte("salted_password"))
-        suite.NotNil(salted_password)
+        saltedPassword := userBucket.Get([]byte("salted_password"))
+        suite.NotNil(saltedPassword)
 
         // Salt password
         hash := sha256.New()
         hash.Write(salt)
         hash.Write([]byte("password"))
 
-        match := SecureCompare(hash.Sum(nil), salted_password)
+        match := SecureCompare(hash.Sum(nil), saltedPassword)
         suite.True(match)
     })
 }
@@ -815,7 +815,7 @@ func (suite *UserTestSuite) TestContainsPublicKeyInvalidUser() {
     suite.NotNil(keyRing)
 
     // List keys
-    buf := make([]byte, 0)
+    var buf []byte
     exists := keyRing.Contains(buf)
     suite.False(exists)
 }
