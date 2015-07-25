@@ -21,6 +21,7 @@ import (
     "github.com/eliquious/leaf"
     log "github.com/mgutz/logxi/v1"
     "github.com/stretchr/testify/suite"
+
     "github.com/subsilent/kappa/auth"
     "golang.org/x/crypto/ssh"
 )
@@ -649,8 +650,26 @@ func (suite *UserTestSuite) TestAddPublicKeyInvalidUser() {
     suite.NotNil(keyRing)
 
     // Add key
-    bytes := []byte("")
+    bytes := []byte("blahblah")
     _, err := keyRing.AddPublicKey(bytes)
+    suite.NotNil(err)
+}
+
+func (suite *UserTestSuite) TestAddPublicKeyInvalidKey() {
+    name := "acme.user.add.invalid.key"
+
+    // Create user
+    user, err := suite.US.Create(name)
+    suite.Nil(err)
+    suite.NotNil(user)
+
+    // Get key ring
+    keyRing := user.KeyRing()
+    suite.NotNil(keyRing)
+
+    // Add key
+    bytes := []byte("blahblah")
+    _, err = keyRing.AddPublicKey(bytes)
     suite.NotNil(err)
 }
 

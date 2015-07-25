@@ -344,10 +344,10 @@ type boltKeyRing struct {
 }
 
 // AddPublicKey simply adds a public key to the user's key ring
-func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, err error) {
+func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, e error) {
     b.users.WriteTx(func(bkt *bolt.Bucket) {
         if len(pemBytes) == 0 {
-            err = ErrInvalidCertificate
+            e = ErrInvalidCertificate
             return
         }
 
@@ -356,7 +356,7 @@ func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, err err
 
         // If user is nil, the user does not exist
         if user == nil {
-            err = ErrUserDoesNotExist
+            e = ErrUserDoesNotExist
             return
         }
 
@@ -368,21 +368,21 @@ func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, err err
 
         // Decode PEM bytes
         block, _ := pem.Decode(pemBytes)
-        if len(block.Bytes) == 0 {
-            err = ErrInvalidCertificate
+        if block == nil {
+            e = ErrInvalidCertificate
             return
         }
 
         pub, err := x509.ParseCertificate(block.Bytes)
         if err != nil {
-            err = ErrInvalidCertificate
+            e = ErrInvalidCertificate
             return
         }
 
         // Convert Public Key to SSH format
         sshKey, err := ssh.NewPublicKey(pub.PublicKey)
         if err != nil {
-            err = ErrFailedKeyConvertion
+            e = ErrFailedKeyConvertion
             return
         }
 
@@ -391,7 +391,7 @@ func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, err err
         fingerprint = auth.CreateFingerprint(key)
 
         // Write key to keys bucket
-        err = keys.Put([]byte(fingerprint), key)
+        e = keys.Put([]byte(fingerprint), key)
         return
     })
     return
