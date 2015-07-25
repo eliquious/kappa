@@ -1,21 +1,24 @@
 package datamodel
 
 import (
-    "crypto/md5"
     "crypto/sha256"
     "crypto/x509"
-    "encoding/hex"
     "encoding/pem"
     "fmt"
     "strings"
 
     "github.com/boltdb/bolt"
     "github.com/eliquious/leaf"
+    "github.com/subsilent/kappa/auth"
     "golang.org/x/crypto/ssh"
 )
 
 var (
     ErrUserDoesNotExist = fmt.Errorf("user does not exist")
+
+    ErrInvalidCertificate = fmt.Errorf("unable to load certificate")
+
+    ErrFailedKeyConvertion = fmt.Errorf("error converting public key to SSH key format")
 )
 
 // PublicKey wraps an ssh.PublicKey byte array and simply provides methods for validation.
@@ -38,7 +41,7 @@ func (p *PublicKey) Equals(key []byte) bool {
 type PublicKeyRing interface {
 
     // AddPublicKey simply adds a public key to the user's key ring
-    AddPublicKey(pemBytes []byte) error
+    AddPublicKey(pemBytes []byte) (string, error)
 
     // RemovePublicKey will remove a public key from a user's key ring
     RemovePublicKey(fingerprint string) error
@@ -265,13 +268,70 @@ func (b boltUser) Roles(namespace string) (roles []string) {
 }
 
 // AddRole appends a role to the given namespace
-func (b boltUser) AddRole(namespace, role string) error {
-    return nil
+func (b boltUser) AddRole(namespace, role string) (err error) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        ns := bkt.Bucket(b.name)
+        if ns == nil {
+            err = ErrUserDoesNotExist
+            return
+        }
+
+        // Get namespaces bucket
+        namespaces, err := ns.CreateBucketIfNotExists([]byte("namespaces"))
+        if err != nil {
+            return
+        }
+
+        // Get existing roles and add new
+        roles := namespaces.Get([]byte(namespace))
+        if len(roles) > 0 {
+
+            list := []string{string(roles), role}
+            namespaces.Put([]byte(namespace), []byte(strings.Join(list, ",")))
+        } else {
+            namespaces.Put([]byte(namespace), []byte(role))
+        }
+        return
+    })
+    return
 }
 
 // RemoveRole removes the role from the given namespace
-func (b boltUser) RemoveRole(namespace, role string) error {
-    return nil
+func (b boltUser) RemoveRole(namespace, role string) (err error) {
+    b.users.WriteTx(func(bkt *bolt.Bucket) {
+
+        // Get namespace bucket
+        ns := bkt.Bucket(b.name)
+        if ns == nil {
+            err = ErrUserDoesNotExist
+            return
+        }
+
+        // Get namespaces bucket
+        namespaces, err := ns.CreateBucketIfNotExists([]byte("namespaces"))
+        if err != nil {
+            return
+        }
+
+        // Get existing roles and add new
+        roles := namespaces.Get([]byte(namespace))
+        if len(roles) > 0 {
+
+            var list []string
+            for _, r := range strings.Split(string(roles), ",") {
+                if r != role {
+                    list = append(list, r)
+                }
+            }
+
+            // Save roles
+            err = namespaces.Put([]byte(namespace), []byte(strings.Join(list, ",")))
+        }
+        return
+    })
+    return
 }
 
 type boltKeyRing struct {
@@ -280,14 +340,19 @@ type boltKeyRing struct {
 }
 
 // AddPublicKey simply adds a public key to the user's key ring
-func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (err error) {
+func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (fingerprint string, err error) {
     b.users.WriteTx(func(bkt *bolt.Bucket) {
+        if len(pemBytes) == 0 {
+            err = ErrInvalidCertificate
+            return
+        }
 
         // Get user bucket
         user := bkt.Bucket(b.username)
 
         // If user is nil, the user does not exist
         if user == nil {
+            err = ErrUserDoesNotExist
             return
         }
 
@@ -299,39 +364,33 @@ func (b *boltKeyRing) AddPublicKey(pemBytes []byte) (err error) {
 
         // Decode PEM bytes
         block, _ := pem.Decode(pemBytes)
-        pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+        if len(block.Bytes) == 0 {
+            err = ErrInvalidCertificate
+            return
+        }
+
+        pub, err := x509.ParseCertificate(block.Bytes)
         if err != nil {
+            err = ErrInvalidCertificate
             return
         }
 
         // Convert Public Key to SSH format
-        sshKey, err := ssh.NewPublicKey(pub)
+        sshKey, err := ssh.NewPublicKey(pub.PublicKey)
         if err != nil {
+            err = ErrFailedKeyConvertion
             return
         }
 
         // Convert key to bytes
         key := sshKey.Marshal()
-
-        // Hash key
-        h := md5.New()
-        h.Write(key)
-
-        // Create Fingerprint
-        var fingerprint string
-        hexidecimal := hex.EncodeToString(h.Sum(nil))
-        for i := 0; i < len(hexidecimal); i += 2 {
-            fingerprint += hexidecimal[i : i+2]
-            if i+2 < len(hexidecimal) {
-                fingerprint += ":"
-            }
-        }
+        fingerprint = auth.CreateFingerprint(key)
 
         // Write key to keys bucket
         err = keys.Put([]byte(fingerprint), key)
         return
     })
-    return nil
+    return
 }
 
 // RemovePublicKey will remove a public key from a user's key ring
@@ -343,6 +402,7 @@ func (b *boltKeyRing) RemovePublicKey(fingerprint string) (err error) {
 
         // If user is nil, the user does not exist
         if user == nil {
+            err = ErrUserDoesNotExist
             return
         }
 
@@ -356,7 +416,7 @@ func (b *boltKeyRing) RemovePublicKey(fingerprint string) (err error) {
         err = keys.Delete([]byte(fingerprint))
         return
     })
-    return nil
+    return
 }
 
 // ListPublicKey returns all of a user's public keys
@@ -406,14 +466,7 @@ func (b *boltKeyRing) Contains(key []byte) (exists bool) {
         }
 
         // Create Fingerprint
-        var fingerprint string
-        hexidecimal := hex.EncodeToString(key)
-        for i := 0; i < len(hexidecimal); i += 2 {
-            fingerprint += hexidecimal[i : i+2]
-            if i+2 < len(hexidecimal) {
-                fingerprint += ":"
-            }
-        }
+        fingerprint := auth.CreateFingerprint(key)
 
         // Get fingerprint
         exists = keys.Get([]byte(fingerprint)) != nil

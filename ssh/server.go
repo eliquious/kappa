@@ -26,7 +26,7 @@ const (
 func NewSSHServer(logger log.Logger, sys datamodel.System, privateKey ssh.Signer, roots *x509.CertPool) (server SSHServer, err error) {
 
     // Get user store
-    users := sys.Users()
+    users, err := sys.Users()
 
     // Create server config
     sshConfig := &ssh.ServerConfig{
