@@ -7,10 +7,10 @@ import (
     "os/signal"
     "path"
 
-    "github.com/eliquious/core"
     log "github.com/mgutz/logxi/v1"
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
+    "github.com/subsilent/kappa/datamodel"
     "github.com/subsilent/kappa/ssh"
     crypto_ssh "golang.org/x/crypto/ssh"
 )
@@ -46,8 +46,9 @@ var ServerCmd = &cobra.Command{
 
         file := path.Join(cwd, viper.GetString("DataPath"), "meta.db")
         logger.Info("Connecting to database", "file", file)
-        factory := core.BoltDatabaseFactory{file}
-        conn, err := factory.Connect()
+        // factory := core.BoltDatabaseFactory{file}
+        system, err := datamodel.NewSystem(file)
+        // conn, err := factory.Connect()
         if err != nil {
             logger.Error("Could not connect to database", "error", err)
             return
@@ -79,7 +80,7 @@ var ServerCmd = &cobra.Command{
         // Setup SSH Server
         sshLogger := log.NewLogger(writer, "ssh")
 
-        sshServer, err := ssh.NewSSHServer(sshLogger, conn, privateKey, roots)
+        sshServer, err := ssh.NewSSHServer(sshLogger, system, privateKey, roots)
         if err != nil {
             logger.Error("SSH Server could not be configured", "error", err)
             return
