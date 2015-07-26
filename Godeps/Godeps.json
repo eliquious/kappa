@@ -16,21 +16,8 @@
 			"Rev": "2c04100eb9793f2b8541d243494e2909d2112325"
 		},
 		{
-			"ImportPath": "github.com/eliquious/core",
-			"Rev": "5ae0650b0b95d731e0111370d6dbe4842744c86b"
-		},
-		{
-			"ImportPath": "github.com/gin-gonic/gin",
-			"Comment": "v1.0rc1-88-gdded099",
-			"Rev": "dded099609a82b86ca7ac510f3489ff9088992ca"
-		},
-		{
-			"ImportPath": "github.com/go-errors/errors",
-			"Rev": "01d535a7e0d0c52e283f462be8ceeb38e5bcaeeb"
-		},
-		{
-			"ImportPath": "github.com/gorilla/securecookie",
-			"Rev": "5f171f42328bdd573211bb82bdee8f259c4c61ae"
+			"ImportPath": "github.com/eliquious/leaf",
+			"Rev": "b535c9fd83c78987c99e9de6f54c59ff4a4a0bf5"
 		},
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
@@ -49,10 +36,6 @@
 			"ImportPath": "github.com/magiconair/properties",
 			"Comment": "v1.5.2",
 			"Rev": "d5929c67198951106f49f7ea425198d0f1a08f7f"
-		},
-		{
-			"ImportPath": "github.com/manucorporat/sse",
-			"Rev": "c142f0f1baea5cef7f98a8a6c222f6134368c1f5"
 		},
 		{
 			"ImportPath": "github.com/mattn/go-colorable",
@@ -101,15 +84,6 @@
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "c84e1f8e3a7e322d497cd16c0e8a13c7e127baf3"
-		},
-		{
-			"ImportPath": "golang.org/x/net/context",
-			"Rev": "dfe268fd2bb5c793f4c083803609fce9806c6f80"
-		},
-		{
-			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
-			"Comment": "v5.5.1",
-			"Rev": "1d61bf31487322f9bffa4d9f1eda4a53175b58dd"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
