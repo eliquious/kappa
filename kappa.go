@@ -1,12 +1,12 @@
 package main
 
 import (
-    "runtime"
+	"runtime"
 
-    "github.com/subsilent/kappa/commands"
+	"github.com/subsilent/kappa/commands"
 )
 
 func main() {
-    runtime.GOMAXPROCS(runtime.NumCPU())
-    commands.Execute()
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	commands.Execute()
 }
