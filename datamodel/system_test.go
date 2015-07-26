@@ -7,8 +7,8 @@ import (
 
 	"testing"
 
-	"github.com/subsilent/kappa/Godeps/_workspace/src/github.com/eliquious/leaf"
-	"github.com/subsilent/kappa/Godeps/_workspace/src/github.com/stretchr/testify/suite"
+	"github.com/eliquious/leaf"
+	"github.com/stretchr/testify/suite"
 )
 
 // TestSystemTestSuite runs the SystemTestSuite

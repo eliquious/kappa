@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/subsilent/kappa/Godeps/_workspace/src/github.com/boltdb/bolt"
-	"github.com/subsilent/kappa/Godeps/_workspace/src/github.com/eliquious/leaf"
+	"github.com/boltdb/bolt"
+	"github.com/eliquious/leaf"
 )
 
 var (
