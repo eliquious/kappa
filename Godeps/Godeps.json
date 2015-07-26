@@ -2,9 +2,14 @@
 	"ImportPath": "github.com/subsilent/kappa",
 	"GoVersion": "go1.4.2",
 	"Packages": [
-		"./datamodel/"
+		"./..."
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/BurntSushi/toml",
+			"Comment": "v0.1.0-21-g056c9bc",
+			"Rev": "056c9bc7be7190eaa7715723883caffa5f8fa3e4"
+		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.0-79-g2c04100",
@@ -13,6 +18,24 @@
 		{
 			"ImportPath": "github.com/eliquious/leaf",
 			"Rev": "29bf17f9f892973ce1fadd669d8ab1f372e9a495"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/kr/pretty",
+			"Comment": "go.weekly.2011-12-22-27-ge6ac2fc",
+			"Rev": "e6ac2fc51e89a3249e82157fa0bb7a18ef9dd5bb"
+		},
+		{
+			"ImportPath": "github.com/kr/text",
+			"Rev": "e373e137fafd8abd480af49182dea0513914adb4"
+		},
+		{
+			"ImportPath": "github.com/magiconair/properties",
+			"Comment": "v1.5.2",
+			"Rev": "d5929c67198951106f49f7ea425198d0f1a08f7f"
 		},
 		{
 			"ImportPath": "github.com/mattn/go-colorable",
@@ -31,6 +54,30 @@
 			"Rev": "002f5bf05304c9df2910ef0a5f9e5ec6bbc7c8c3"
 		},
 		{
+			"ImportPath": "github.com/mitchellh/mapstructure",
+			"Rev": "bb4fbaf540ca2f7057d3adb5765784d24d9fd801"
+		},
+		{
+			"ImportPath": "github.com/spf13/cast",
+			"Rev": "4d07383ffe94b5e5a6fa3af9211374a4507a0184"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "8f5946caaeeff40a98d67f60c25e89c3525038a3"
+		},
+		{
+			"ImportPath": "github.com/spf13/jwalterweatherman",
+			"Rev": "3d60171a64319ef63c78bd45bd60e6eab1e75f8b"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "8a0b846eb11d294deee8f68f697d48ac62aa372f"
+		},
+		{
+			"ImportPath": "github.com/spf13/viper",
+			"Rev": "be5ff3e4840cf692388bde7a057595a474ef379e"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "de7fcff264cd05cc0c90c509ea789a436a0dd206"
 		},
@@ -39,8 +86,16 @@
 			"Rev": "de7fcff264cd05cc0c90c509ea789a436a0dd206"
 		},
 		{
+			"ImportPath": "github.com/subsilent/zbase32",
+			"Rev": "b76733425599ce1b09a9be33259e541c89718cc2"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "c84e1f8e3a7e322d497cd16c0e8a13c7e127baf3"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
 		}
 	]
 }
