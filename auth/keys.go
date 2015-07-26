@@ -20,6 +20,7 @@ import (
     "time"
 
     log "github.com/mgutz/logxi/v1"
+    "golang.org/x/crypto/ssh"
 )
 
 // CreateFingerprint generates an md5 fingerprint
@@ -46,25 +47,25 @@ func CreatePkiDirectories(logger log.Logger, root string) error {
 
     // Create pki directory
     if err := os.MkdirAll(pki, os.ModeDir|0755); err != nil {
-        logger.Warn("Could not create pki/ directory", "err", err)
+        logger.Warn("Could not create pki/ directory", "err", err.Error())
         return err
     }
 
     // Create public directory
     if err := os.MkdirAll(path.Join(pki, "public"), os.ModeDir|0755); err != nil {
-        logger.Warn("Could not create pki/public/ directory", "err", err)
+        logger.Warn("Could not create pki/public/ directory", "err", err.Error())
         return err
     }
 
     // Create private directory
     if err := os.MkdirAll(path.Join(pki, "private"), os.ModeDir|0755); err != nil {
-        logger.Warn("Could not create pki/private/ directory", "err", err)
+        logger.Warn("Could not create pki/private/ directory", "err", err.Error())
         return err
     }
 
     // Create reqs directory
     if err := os.MkdirAll(path.Join(pki, "reqs"), os.ModeDir|0755); err != nil {
-        logger.Warn("Could not create pki/reqs/ directory", "err", err)
+        logger.Warn("Could not create pki/reqs/ directory", "err", err.Error())
         return err
     }
 
@@ -86,7 +87,7 @@ func CreateCertificateAuthority(logger log.Logger, key *rsa.PrivateKey, years in
     serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
     serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
     if err != nil {
-        return nil, fmt.Errorf("failed to generate serial number: %s", err)
+        return nil, fmt.Errorf("failed to generate serial number: %s", err.Error())
     }
 
     // Create template
@@ -240,6 +241,24 @@ func ReadCertificate(filename string, certType string) (*pem.Block, error) {
     return pemBlock, nil
 }
 
+// ReadPrivateKey reads a private key file
+func ReadPrivateKey(logger log.Logger, keyFile string) (privateKey ssh.Signer, err error) {
+
+    // Read SSH Key
+    keyBytes, err := ioutil.ReadFile(keyFile)
+    if err != nil {
+        logger.Warn("Private key could not be read", "error", string(err.Error()))
+        return
+    }
+
+    // Get private key
+    privateKey, err = ssh.ParsePrivateKey(keyBytes)
+    if err != nil {
+        logger.Warn("Private key could not be parsed", "error", err.Error())
+    }
+    return
+}
+
 // CreateCertificate generates a new cert
 func CreateCertificate(logger log.Logger, req *x509.CertificateRequest, key *rsa.PrivateKey, years int, hostList string) ([]byte, error) {
 
@@ -281,7 +300,7 @@ func CreateCertificate(logger log.Logger, req *x509.CertificateRequest, key *rsa
     serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
     serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
     if err != nil {
-        return nil, fmt.Errorf("failed to generate serial number: %s", err)
+        return nil, fmt.Errorf("failed to generate serial number: %s", err.Error())
     }
 
     // Create template
