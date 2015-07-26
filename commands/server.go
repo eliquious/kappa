@@ -10,12 +10,12 @@ import (
     log "github.com/mgutz/logxi/v1"
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
+    "github.com/subsilent/kappa/auth"
     "github.com/subsilent/kappa/datamodel"
     "github.com/subsilent/kappa/ssh"
-    crypto_ssh "golang.org/x/crypto/ssh"
 )
 
-// ServerCmd is the subsilent root command.
+// ServerCmd is the kappa root command.
 var ServerCmd = &cobra.Command{
     Use:   "server",
     Short: "server starts the database server",
@@ -24,7 +24,7 @@ var ServerCmd = &cobra.Command{
 
         // Create logger
         writer := log.NewConcurrentWriter(os.Stdout)
-        logger := log.NewLogger(writer, "subsilent")
+        logger := log.NewLogger(writer, "kappa")
 
         err := InitializeConfig(writer)
         if err != nil {
@@ -33,14 +33,14 @@ var ServerCmd = &cobra.Command{
 
         // Create data directory
         if err := os.MkdirAll(viper.GetString("DataPath"), os.ModeDir|0655); err != nil {
-            logger.Warn("Could not create data directory", "err", err)
+            logger.Warn("Could not create data directory", "err", err.Error())
             return
         }
 
         // Connect to database
         cwd, err := os.Getwd()
         if err != nil {
-            logger.Error("Could not get working directory", "error", err)
+            logger.Error("Could not get working directory", "error", err.Error())
             return
         }
 
@@ -48,7 +48,7 @@ var ServerCmd = &cobra.Command{
         logger.Info("Connecting to database", "file", file)
         system, err := datamodel.NewSystem(file)
         if err != nil {
-            logger.Error("Could not connect to database", "error", err)
+            logger.Error("Could not connect to database", "error", err.Error())
             return
         }
 
@@ -56,7 +56,7 @@ var ServerCmd = &cobra.Command{
         sshKeyFile := viper.GetString("SSHKey")
         logger.Info("Reading private key", "file", sshKeyFile)
 
-        privateKey, err := readPrivateKey(logger, sshKeyFile)
+        privateKey, err := auth.ReadPrivateKey(logger, sshKeyFile)
         if err != nil {
             return
         }
@@ -75,14 +75,14 @@ var ServerCmd = &cobra.Command{
         // Add admin cert to key ring
         userStore, err := system.Users()
         if err != nil {
-            logger.Error("could not get user store", "error", err)
+            logger.Error("could not get user store", "error", err.Error())
             return
         }
 
         // Create admin account
         admin, err := userStore.Create("admin")
         if err != nil {
-            logger.Error("error creating admin account", "error", err)
+            logger.Error("error creating admin account", "error", err.Error())
             return
         }
 
@@ -90,7 +90,7 @@ var ServerCmd = &cobra.Command{
         keyRing := admin.KeyRing()
         fingerprint, err := keyRing.AddPublicKey(cert)
         if err != nil {
-            logger.Error("admin certificate could not be added", "error", err)
+            logger.Error("admin certificate could not be added", "error", err.Error())
             return
         }
         logger.Info("Added admin certificate", "fingerprint", fingerprint)
@@ -113,7 +113,7 @@ var ServerCmd = &cobra.Command{
         sshLogger := log.NewLogger(writer, "ssh")
         sshServer, err := ssh.NewSSHServer(sshLogger, system, privateKey, roots)
         if err != nil {
-            logger.Error("SSH Server could not be configured", "error", err)
+            logger.Error("SSH Server could not be configured", "error", err.Error())
             return
         }
 
@@ -212,20 +212,4 @@ func InitializeServerConfig(logger log.Logger) error {
     }
 
     return nil
-}
-
-func readPrivateKey(logger log.Logger, keyFile string) (privateKey crypto_ssh.Signer, err error) {
-    // Read SSH Key
-    keyBytes, err := ioutil.ReadFile(keyFile)
-    if err != nil {
-        logger.Error("Private key could not be read", "error", err)
-        return
-    }
-
-    // Get private key
-    privateKey, err = crypto_ssh.ParsePrivateKey(keyBytes)
-    if err != nil {
-        logger.Error("Private key could not be parsed", "error", err)
-    }
-    return
 }
