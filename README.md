@@ -33,13 +33,13 @@ $ make setup
 
 This will generate a certificate authority, a private for the SSH server and an admin private key. Alternatively, you can generate them individually.
 
-####  Generate CA
+####  Generate a new CA
 
 ```
 # ./kappa init-ca
 ```
 
-####  Generate certificate
+####  Generate another certificate
 
 ```
 # ./kappa new-cert --name=<CERT NAME> 
