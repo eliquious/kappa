@@ -2,6 +2,7 @@ package ssh
 
 import (
     "crypto/rand"
+    "crypto/x509"
     "fmt"
     "net"
     "time"
@@ -9,7 +10,7 @@ import (
     log "github.com/mgutz/logxi/v1"
     "github.com/spf13/viper"
 
-    "github.com/eliquious/core"
+    "github.com/subsilent/kappa/datamodel"
     "github.com/subsilent/zbase32"
     "golang.org/x/crypto/ssh"
 )
@@ -22,22 +23,43 @@ const (
     CsrfTokenLength     = 40
 )
 
-type keyHandler func(pubkey []byte) (string, error)
+func NewSSHServer(logger log.Logger, sys datamodel.System, privateKey ssh.Signer, roots *x509.CertPool) (server SSHServer, err error) {
 
-func NewSSHServer(logger log.Logger, db core.KeyValueDatabase, privateKey ssh.Signer) (server SSHServer, err error) {
-
-    // Create data store
-    // metaKeyspace, err := db.GetOrCreateKeyspace("meta")
-    // keys := db.GetOrCreateKeyspace("public-keys")
+    // Get user store
+    users, err := sys.Users()
 
     // Create server config
     sshConfig := &ssh.ServerConfig{
         NoClientAuth: false,
-        PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-            perm := &ssh.Permissions{
-                Extensions: map[string]string{"pubkey": string(key.Marshal())},
+        PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (perm *ssh.Permissions, err error) {
+
+            // Get user if exists, otherwise return error
+            user, err := users.Get(conn.User())
+            if err != nil {
+                return
             }
-            return perm, nil
+
+            // Check keyring for public key
+            if keyring := user.KeyRing(); !keyring.Contains(key.Marshal()) {
+                err = fmt.Errorf("invalid public key")
+                return
+            }
+
+            // Add pubkey and username to permissions
+            perm = &ssh.Permissions{
+                Extensions: map[string]string{
+                    "pubkey":   string(key.Marshal()),
+                    "username": conn.User(),
+                },
+            }
+            return
+        },
+        AuthLogCallback: func(conn ssh.ConnMetadata, method string, err error) {
+            if err != nil {
+                logger.Info("Login attempt", "user", conn.User(), "method", method, "error", err.Error())
+            } else {
+                logger.Info("Successful login", "user", conn.User(), "method", method)
+            }
         },
     }
     sshConfig.AddHostKey(privateKey)
@@ -66,29 +88,22 @@ func NewSSHServer(logger log.Logger, db core.KeyValueDatabase, privateKey ssh.Si
     server.logger = logger
     server.sshConfig = sshConfig
     server.listener = listener
-    server.authenticator = func(conn *ssh.ServerConn) bool {
-        // logger.Info("Accepted connection.")
-        return true
-
-        // username := keys.Get(conn.Permissions.Extensions["pubkey"])
-    }
     return
 }
 
 type SSHServer struct {
-    logger        log.Logger
-    sshConfig     *ssh.ServerConfig
-    listener      *net.TCPListener
-    authenticator AuthConnectionHandler
-    done          chan bool
+    logger    log.Logger
+    sshConfig *ssh.ServerConfig
+    listener  *net.TCPListener
+    done      chan bool
 }
 
 func (s *SSHServer) Run(logger log.Logger, closer chan<- bool) {
-    logger.Info("Starting SSH server", "addr", viper.GetString("SSHAdvertise"))
+    logger.Info("Starting SSH server", "addr", viper.GetString("SSHListen"))
     s.done = make(chan bool)
 
     // Start server
-    go func(l log.Logger, sock *net.TCPListener, config *ssh.ServerConfig, c <-chan bool, complete chan<- bool, auth AuthConnectionHandler) {
+    go func(l log.Logger, sock *net.TCPListener, config *ssh.ServerConfig, c <-chan bool, complete chan<- bool) {
         defer sock.Close()
         for {
 
@@ -117,17 +132,14 @@ func (s *SSHServer) Run(logger log.Logger, closer chan<- bool) {
 
                 // Handle connection
                 l.Debug("Successful SSH connection")
-                go handleTCPConnection(l, tcpConn, config, auth)
+                go handleTCPConnection(l, tcpConn, config)
             }
         }
-    }(logger, s.listener, s.sshConfig, s.done, closer, s.authenticator)
-
-    // return done
+    }(logger, s.listener, s.sshConfig, s.done, closer)
 }
 
 func (s *SSHServer) Wait() {
     s.done <- true
-    // <-closer
 }
 
 func generateToken(length int) (token string, err error) {

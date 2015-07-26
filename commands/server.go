@@ -7,10 +7,10 @@ import (
     "os/signal"
     "path"
 
-    "github.com/eliquious/core"
     log "github.com/mgutz/logxi/v1"
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
+    "github.com/subsilent/kappa/datamodel"
     "github.com/subsilent/kappa/ssh"
     crypto_ssh "golang.org/x/crypto/ssh"
 )
@@ -46,8 +46,7 @@ var ServerCmd = &cobra.Command{
 
         file := path.Join(cwd, viper.GetString("DataPath"), "meta.db")
         logger.Info("Connecting to database", "file", file)
-        factory := core.BoltDatabaseFactory{file}
-        conn, err := factory.Connect()
+        system, err := datamodel.NewSystem(file)
         if err != nil {
             logger.Error("Could not connect to database", "error", err)
             return
@@ -61,6 +60,40 @@ var ServerCmd = &cobra.Command{
         if err != nil {
             return
         }
+
+        // Get admin certificate
+        adminCertFile := viper.GetString("AdminCert")
+        logger.Info("Reading admin public key", "file", adminCertFile)
+
+        // Read admin certificate
+        cert, err := ioutil.ReadFile(adminCertFile)
+        if err != nil {
+            logger.Error("admin certificate could not be read", "filename", viper.GetString("AdminCert"))
+            return
+        }
+
+        // Add admin cert to key ring
+        userStore, err := system.Users()
+        if err != nil {
+            logger.Error("could not get user store", "error", err)
+            return
+        }
+
+        // Create admin account
+        admin, err := userStore.Create("admin")
+        if err != nil {
+            logger.Error("error creating admin account", "error", err)
+            return
+        }
+
+        // Add admin certificate
+        keyRing := admin.KeyRing()
+        fingerprint, err := keyRing.AddPublicKey(cert)
+        if err != nil {
+            logger.Error("admin certificate could not be added", "error", err)
+            return
+        }
+        logger.Info("Added admin certificate", "fingerprint", fingerprint)
 
         // Read root cert
         rootPem, err := ioutil.ReadFile(viper.GetString("CACert"))
@@ -78,8 +111,7 @@ var ServerCmd = &cobra.Command{
 
         // Setup SSH Server
         sshLogger := log.NewLogger(writer, "ssh")
-
-        sshServer, err := ssh.NewSSHServer(sshLogger, conn, privateKey, roots)
+        sshServer, err := ssh.NewSSHServer(sshLogger, system, privateKey, roots)
         if err != nil {
             logger.Error("SSH Server could not be configured", "error", err)
             return
@@ -110,6 +142,7 @@ var serverCmd *cobra.Command
 // Command line args
 var (
     SSHKey     string
+    AdminCert  string
     CACert     string
     TLSCert    string
     TLSKey     string
@@ -121,12 +154,13 @@ var (
 func init() {
 
     ServerCmd.PersistentFlags().StringVarP(&SSHKey, "ssh-key", "", "", "Private key to identify server with")
+    ServerCmd.PersistentFlags().StringVarP(&AdminCert, "admin-cert", "", "", "Public certificate for admin user")
     ServerCmd.PersistentFlags().StringVarP(&CACert, "ca-cert", "", "", "Root Certificate")
     ServerCmd.PersistentFlags().StringVarP(&TLSCert, "tls-cert", "", "", "TLS certificate file")
     ServerCmd.PersistentFlags().StringVarP(&TLSKey, "tls-key", "", "", "TLS private key file")
     ServerCmd.PersistentFlags().StringVarP(&DataPath, "data", "D", "", "Data directory")
-    ServerCmd.PersistentFlags().StringVarP(&SSHListen, "ssh-listen", "", "", "Host and port for SSH server to listen on")
-    ServerCmd.PersistentFlags().StringVarP(&HTTPListen, "http-listen", "", ":", "Host and port for HTTP server to listen on")
+    ServerCmd.PersistentFlags().StringVarP(&SSHListen, "ssh-listen", "S", "", "Host and port for SSH server to listen on")
+    ServerCmd.PersistentFlags().StringVarP(&HTTPListen, "http-listen", "H", ":", "Host and port for HTTP server to listen on")
     serverCmd = ServerCmd
 }
 
@@ -136,6 +170,7 @@ func InitializeServerConfig(logger log.Logger) error {
     // Load default settings
     logger.Info("Loading default server settings")
     viper.SetDefault("CACert", "ca.crt")
+    viper.SetDefault("AdminCert", "admin.crt")
     viper.SetDefault("SSHKey", "ssh-identity.key")
     viper.SetDefault("TLSCert", "tls-identity.crt")
     viper.SetDefault("TLSKey", "tls-identity.key")
@@ -146,6 +181,10 @@ func InitializeServerConfig(logger log.Logger) error {
     if serverCmd.PersistentFlags().Lookup("ca-cert").Changed {
         logger.Info("", "CACert", CACert)
         viper.Set("CACert", CACert)
+    }
+    if serverCmd.PersistentFlags().Lookup("admin-cert").Changed {
+        logger.Info("", "AdminCert", AdminCert)
+        viper.Set("AdminCert", AdminCert)
     }
     if serverCmd.PersistentFlags().Lookup("ssh-key").Changed {
         logger.Info("", "SSHKey", SSHKey)

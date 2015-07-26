@@ -13,17 +13,15 @@ import (
 // AuthConnectionHandler validates connections against user accounts
 type AuthConnectionHandler func(*ssh.ServerConn) bool
 
-func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig, auth AuthConnectionHandler) {
+func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig) {
 
     // Open SSH connection
     sshConn, channels, requests, err := ssh.NewServerConn(conn, sshConfig)
     if err != nil {
         logger.Warn("SSH handshake failed")
         return
-    } else if !auth(sshConn) {
-        logger.Warn("Unauthenticated client. Closing connection.")
-        return
     }
+
     logger.Debug("Handshake successful")
     defer sshConn.Conn.Close()
 
@@ -114,6 +112,12 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
     //     logger.Warn("Error making terminal raw: ", err.Error())
     // }
     // defer terminal.Restore(0, oldState)
+
+    for _, line := range ASCII {
+        term.Write([]byte(line))
+        term.Write([]byte("\r\n"))
+    }
+    term.Write([]byte("\r\nWelcome to Kappa DB!\r\n"))
 
     for {
         line, err := term.ReadLine()
