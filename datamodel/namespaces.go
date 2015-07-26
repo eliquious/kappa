@@ -32,6 +32,7 @@ type Namespace interface {
     // RevokePermission removes a permission from the given role
     RevokePermission(role string, permission string) error
 
+    // HasPermission detmines if the given role has a certain permission
     HasPermission(role string, permission string) bool
 
     // AddUser registers a user with the namespace

@@ -118,8 +118,19 @@ func (b boltUserStore) Create(name string) (u User, err error) {
     return
 }
 
-// Get returns a User, creating it if doesn't exist
-func (b boltUserStore) Get(name string) (User, error) {
+// Get returns a User, returning an error if it doesn't exist
+func (b boltUserStore) Get(name string) (u User, err error) {
+    b.ks.ReadTx(func(bkt *bolt.Bucket) {
+
+        // Get user bucket
+        userBucket := bkt.Bucket([]byte(name))
+        if userBucket == nil {
+            err = ErrUserDoesNotExist
+            return
+        }
+        u = boltUser{[]byte(name), b.ks}
+        return
+    })
     return b.Create(name)
 }
 

@@ -55,7 +55,11 @@ func NewSSHServer(logger log.Logger, sys datamodel.System, privateKey ssh.Signer
             return
         },
         AuthLogCallback: func(conn ssh.ConnMetadata, method string, err error) {
-            logger.Info("Login attempt", "user", conn.User(), "method", method, "error", err)
+            if err != nil {
+                logger.Info("Login attempt", "user", conn.User(), "method", method, "error", err.Error())
+            } else {
+                logger.Info("Successful login", "user", conn.User(), "method", method)
+            }
         },
     }
     sshConfig.AddHostKey(privateKey)

@@ -113,6 +113,12 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
     // }
     // defer terminal.Restore(0, oldState)
 
+    for _, line := range ASCII {
+        term.Write([]byte(line))
+        term.Write([]byte("\r\n"))
+    }
+    term.Write([]byte("\r\nWelcome to Kappa DB!\r\n"))
+
     for {
         line, err := term.ReadLine()
         if err != nil {
