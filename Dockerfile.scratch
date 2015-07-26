@@ -7,9 +7,9 @@ ADD kappa /
 ADD pki/ /pki/
 
 # Set environment variables
-ENV LOGXI=*=INF
-ENV LOGXI_COLORS=key=green,value=magenta,message=cyan,TRC,DBG,WRN=red+h,INF=green,ERR=red+h,maxcol=1000
-ENV LOGXI_FORMAT=happy,t=2006-01-02 15:04:05.000000
+ENV LOGXI="*=INF"
+ENV LOGXI_COLORS="key=green,value=magenta,message=cyan,TRC,DBG,WRN=red+h,INF=green,ERR=red+h,maxcol=1000"
+ENV LOGXI_FORMAT="happy,t=2006-01-02 15:04:05.000000"
 ENV GIN_MODE=release
 
 # Expose ports
