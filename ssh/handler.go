@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	log "github.com/mgutz/logxi/v1"
+	"github.com/subsilent/kappa/skl"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -120,21 +121,39 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 	term.Write([]byte("\r\nWelcome to Kappa DB!\r\n"))
 
 	for {
-		line, err := term.ReadLine()
+		input, err := term.ReadLine()
 		if err != nil {
 			fmt.Errorf("Readline() error")
 			break
 		}
 
 		// Process line
+		line := strings.TrimSpace(input)
 		if len(line) > 0 {
-			logger.Info("Request", "data", strings.TrimSpace(line))
+
+			// Log input and handle exit requests
 			if line == "exit" || line == "quit" {
+				logger.Info("Closing connection")
 				break
 			}
 
+			// Parse statement
+			stmt, err := skl.ParseStatement(line)
+
+			// Return parse error in red
+			if err != nil {
+				logger.Warn("Bad Statement", "statement", line, "error", err)
+				channel.Write(term.Escape.Red)
+				channel.Write([]byte(err.Error()))
+				channel.Write([]byte("\r\n"))
+				channel.Write(term.Escape.Reset)
+				continue
+			}
+
+			// For now, just echo the successful command in green
+			logger.Info("Successful Statement", "statement", line)
 			channel.Write(term.Escape.Green)
-			channel.Write([]byte(line))
+			channel.Write([]byte(stmt.String()))
 			channel.Write([]byte("\r\n"))
 			channel.Write(term.Escape.Reset)
 		}
