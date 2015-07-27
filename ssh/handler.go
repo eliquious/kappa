@@ -1,7 +1,9 @@
 package ssh
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"net"
 	"strings"
 
@@ -105,7 +107,7 @@ func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-ch
 
 func startTerminal(logger log.Logger, channel ssh.Channel) {
 	defer channel.Close()
-	term := terminal.NewTerminal(channel, "kappa > ")
+	term := terminal.NewTerminal(channel, "kappa> ")
 
 	// // Try to make the terminal raw
 	// oldState, err := terminal.MakeRaw(0)
@@ -114,11 +116,14 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 	// }
 	// defer terminal.Restore(0, oldState)
 
+	term.Write([]byte("\r\n"))
 	for _, line := range ASCII {
 		term.Write([]byte(line))
 		term.Write([]byte("\r\n"))
 	}
-	term.Write([]byte("\r\nWelcome to Kappa DB!\r\n"))
+
+	//
+	term.Write([]byte("\r\n" + intro() + "\r\n\n"))
 
 	for {
 		input, err := term.ReadLine()
@@ -158,4 +163,22 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 			channel.Write(term.Escape.Reset)
 		}
 	}
+}
+
+func intro() string {
+	messages := []string{
+		"Welcome to Kappa DB, Yo!",
+		"Yeah, Bitch! Magnets!",
+		"Yeah! Science!",
+		"Better call Saul.",
+		"Hold on to you hats, bitches.",
+		"One particular element comes to mind... Ahhhh.. wire..",
+	}
+
+	index, err := rand.Int(rand.Reader, big.NewInt(int64(len(messages))))
+	if err != nil {
+		return messages[0]
+	}
+
+	return messages[index.Int64()]
 }
