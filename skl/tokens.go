@@ -9,7 +9,8 @@ func init() {
 // Token enums
 // Built-in Types
 const (
-	STRING lexer.Token = iota + 1000
+	startTypes lexer.Token = iota + 1000
+	STRING
 	UINT8
 	INT8
 	UINT16
@@ -22,9 +23,11 @@ const (
 	FLOAT64
 	TIMESTAMP
 	BOOLEAN
+	endTypes
 
 	// Keywords
 
+	startKeywords
 	ADD
 	BY
 	CLUSTERED
@@ -59,6 +62,7 @@ const (
 	VIEW
 	WHERE
 	WITH
+	endKeywords
 )
 
 var testKeywords = map[lexer.Token]string{
@@ -111,4 +115,12 @@ var testKeywords = map[lexer.Token]string{
 	VIEW:        "VIEW",
 	WHERE:       "WHERE",
 	WITH:        "WITH",
+}
+
+// tokstr returns a literal if provided, otherwise returns the token string.
+func tokstr(tok lexer.Token, lit string) string {
+	if lit != "" && tok != lexer.WS {
+		return lit
+	}
+	return tok.String()
 }
