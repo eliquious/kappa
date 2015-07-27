@@ -122,8 +122,10 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 		term.Write([]byte("\r\n"))
 	}
 
-	//
-	term.Write([]byte("\r\n" + intro() + "\r\n\n"))
+	// Write login message
+	term.Write([]byte("\r\n\n"))
+	LoginMessage(channel, *term.Escape)
+	term.Write([]byte("\n"))
 
 	for {
 		input, err := term.ReadLine()
@@ -140,6 +142,11 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 			if line == "exit" || line == "quit" {
 				logger.Info("Closing connection")
 				break
+			} else if line == "quote me" {
+				term.Write([]byte("\r\n"))
+				LoginMessage(channel, *term.Escape)
+				term.Write([]byte("\r\n"))
+				continue
 			}
 
 			// Parse statement
@@ -171,7 +178,6 @@ func intro() string {
 		"Yeah, Bitch! Magnets!",
 		"Yeah! Science!",
 		"Better call Saul.",
-		"Hold on to you hats, bitches.",
 		"One particular element comes to mind... Ahhhh.. wire..",
 	}
 
