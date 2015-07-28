@@ -6,7 +6,7 @@ import "bytes"
 type NodeType int
 
 const (
-	UseStatementNode NodeType = iota
+	UseStatementType NodeType = iota
 )
 
 // Node is an interface for AST nodes
@@ -36,7 +36,7 @@ type UseStatement struct {
 }
 
 // String returns a string representation
-func (s *UseStatement) String() string {
+func (s UseStatement) String() string {
 	var buf bytes.Buffer
 	buf.WriteString("USE ")
 	buf.WriteString(s.Name)
@@ -44,7 +44,7 @@ func (s *UseStatement) String() string {
 }
 
 // NodeType returns an NodeType id
-func (s *UseStatement) NodeType() NodeType { return UseStatementNode }
+func (s UseStatement) NodeType() NodeType { return UseStatementType }
 
 // RequiredPermissions returns the required permissions in order to use this command
-func (s *UseStatement) RequiredPermissions() []string { return []string{} }
+func (s UseStatement) RequiredPermissions() []string { return []string{} }
