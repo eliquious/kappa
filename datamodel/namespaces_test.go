@@ -92,23 +92,16 @@ func (suite *NamespaceTestSuite) TestCreateKeyspace() {
 // TestGetKeyspace ensures a namespace can be created
 func (suite *NamespaceTestSuite) TestGetKeyspace() {
 
-    // Test that the namespace does not exist prior
+    // Get the namespace
+    ns, err := suite.NS.Get("acme.none")
+    suite.NotNil(err)
+    suite.Nil(ns)
+
+    // Test that the namespace does not exist afterwards
     suite.KS.ReadTx(func(bkt *bolt.Bucket) {
 
         b := bkt.Bucket([]byte("acme.none"))
         suite.Nil(b)
-    })
-
-    // Get the namespace
-    ns, err := suite.NS.Get("acme.none")
-    suite.Nil(err)
-    suite.NotNil(ns)
-
-    // Test that the namespace was created
-    suite.KS.ReadTx(func(bkt *bolt.Bucket) {
-
-        b := bkt.Bucket([]byte("acme.none"))
-        suite.NotNil(b)
     })
 }
 

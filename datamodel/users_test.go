@@ -112,14 +112,14 @@ func (suite *UserTestSuite) TestGetUser() {
 
     // Get the user
     ns, err := suite.US.Get("acme.none")
-    suite.Nil(err)
-    suite.NotNil(ns)
+    suite.NotNil(err)
+    suite.Nil(ns)
 
-    // Test that the user was created
+    // Test that the user was not created
     suite.KS.ReadTx(func(bkt *bolt.Bucket) {
 
         b := bkt.Bucket([]byte("acme.none"))
-        suite.NotNil(b)
+        suite.Nil(b)
     })
 }
 
