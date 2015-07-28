@@ -1,14 +1,14 @@
 package ssh
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"net"
 	"strings"
 
 	log "github.com/mgutz/logxi/v1"
+	"github.com/subsilent/kappa/datamodel"
 	"github.com/subsilent/kappa/skl"
+
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -16,7 +16,7 @@ import (
 // AuthConnectionHandler validates connections against user accounts
 type AuthConnectionHandler func(*ssh.ServerConn) bool
 
-func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig) {
+func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.ServerConfig, system datamodel.System) {
 
 	// Open SSH connection
 	sshConn, channels, requests, err := ssh.NewServerConn(conn, sshConfig)
@@ -24,6 +24,10 @@ func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.Server
 		logger.Warn("SSH handshake failed")
 		return
 	}
+
+	// Get user if exists, otherwise return error
+	users, _ := system.Users()
+	user, _ := users.Get(sshConn.Permissions.Extensions["username"])
 
 	logger.Debug("Handshake successful")
 	defer sshConn.Conn.Close()
@@ -48,14 +52,14 @@ func handleTCPConnection(logger log.Logger, conn net.Conn, sshConfig *ssh.Server
 		}
 
 		if t == "session" {
-			go handleSessionRequests(logger, channel, requests)
+			go handleSessionRequests(logger, channel, requests, system, user)
 		} else if t == "kappa-client" {
-			go handleChannelRequests(logger, channel, requests)
+			go handleChannelRequests(logger, channel, requests, system, user)
 		}
 	}
 }
 
-func handleChannelRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request) {
+func handleChannelRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request, system datamodel.System, user datamodel.User) {
 	defer channel.Close()
 
 	for req := range requests {
@@ -70,7 +74,7 @@ func handleChannelRequests(logger log.Logger, channel ssh.Channel, requests <-ch
 	}
 }
 
-func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request) {
+func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-chan *ssh.Request, system datamodel.System, user datamodel.User) {
 	defer channel.Close()
 
 	// Sessions have out-of-band requests such as "shell",
@@ -96,7 +100,7 @@ func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-ch
 			// know we have a pty ready for input
 			ok = true
 
-			go startTerminal(logger, channel)
+			go startTerminal(logger, channel, system, user)
 		default:
 			// fmt.Println("default req: ", req)
 		}
@@ -105,7 +109,7 @@ func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-ch
 	}
 }
 
-func startTerminal(logger log.Logger, channel ssh.Channel) {
+func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.System, user datamodel.User) {
 	defer channel.Close()
 	term := terminal.NewTerminal(channel, "kappa> ")
 
@@ -116,6 +120,7 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 	// }
 	// defer terminal.Restore(0, oldState)
 
+	// Write ascii text
 	term.Write([]byte("\r\n"))
 	for _, line := range ASCII {
 		term.Write([]byte(line))
@@ -126,6 +131,16 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 	term.Write([]byte("\r\n\n"))
 	LoginMessage(channel, *term.Escape)
 	term.Write([]byte("\n"))
+
+	// Create executor
+	executor := Executor{
+		Session: Session{
+			namespace: "",
+			user:      user,
+			system:    system,
+			terminal:  term,
+		},
+	}
 
 	for {
 		input, err := term.ReadLine()
@@ -162,29 +177,16 @@ func startTerminal(logger log.Logger, channel ssh.Channel) {
 				continue
 			}
 
-			// For now, just echo the successful command in green
-			logger.Info("Successful Statement", "statement", line)
-			channel.Write(term.Escape.Green)
-			channel.Write([]byte(stmt.String()))
-			channel.Write([]byte("\r\n"))
-			channel.Write(term.Escape.Reset)
+			// Execute statements
+			w := ResponseWriter{term.Escape, channel}
+			executor.Execute(&w, stmt)
+
+			// // For now, just echo the successful command in green
+			// logger.Info("Successful Statement", "statement", line)
+			// channel.Write(term.Escape.Green)
+			// channel.Write([]byte(stmt.String()))
+			// channel.Write([]byte("\r\n"))
+			// channel.Write(term.Escape.Reset)
 		}
 	}
-}
-
-func intro() string {
-	messages := []string{
-		"Welcome to Kappa DB, Yo!",
-		"Yeah, Bitch! Magnets!",
-		"Yeah! Science!",
-		"Better call Saul.",
-		"One particular element comes to mind... Ahhhh.. wire..",
-	}
-
-	index, err := rand.Int(rand.Reader, big.NewInt(int64(len(messages))))
-	if err != nil {
-		return messages[0]
-	}
-
-	return messages[index.Int64()]
 }
