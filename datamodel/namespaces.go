@@ -84,8 +84,19 @@ func (b boltNamespaceStore) Create(name string) (ns Namespace, err error) {
 }
 
 // Get returns a Namespace, creating it if doesn't exist
-func (b boltNamespaceStore) Get(name string) (Namespace, error) {
-	return b.Create(name)
+func (b boltNamespaceStore) Get(name string) (ns Namespace, err error) {
+	b.ks.ReadTx(func(bkt *bolt.Bucket) {
+
+		// Get user bucket
+		nsBucket := bkt.Bucket([]byte(name))
+		if nsBucket == nil {
+			err = ErrNamespaceDoesNotExist
+			return
+		}
+		ns = boltNamespace{[]byte(name), b.ks}
+		return
+	})
+	return
 }
 
 // Delete removes a namespace from the database
