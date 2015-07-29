@@ -35,10 +35,12 @@ func (q Quote) Write(w io.Writer, colors terminal.EscapeCodes) {
 	w.Write([]byte("\r\n"))
 }
 
+// Conversation displays a list of quotes
 type Conversation struct {
 	Quotes []Quote
 }
 
+// Write actually writes the message to the terminal
 func (c Conversation) Write(w io.Writer, colors terminal.EscapeCodes) {
 	for _, q := range c.Quotes {
 		q.Write(w, colors)
@@ -46,7 +48,8 @@ func (c Conversation) Write(w io.Writer, colors terminal.EscapeCodes) {
 	w.Write([]byte("\r\n"))
 }
 
-func LoginMessage(w io.Writer, colors terminal.EscapeCodes) {
+// LoginMessage writes a message at login
+func GetMessage(w io.Writer, colors terminal.EscapeCodes) {
 	var messages = []Message{
 		SimpleMessage{"Welcome to Kappa DB, Yo!"},
 		Quote{colors.Magenta, "Jessy Pinkman", "Yeah, Bitch! Magnets!"},
@@ -60,10 +63,7 @@ func LoginMessage(w io.Writer, colors terminal.EscapeCodes) {
 		},
 	}
 
-	// messages := []string{
-	// 	"One particular element comes to mind... Ahhhh.. wire..",
-	// }
-
+	// Choose message
 	index, err := rand.Int(rand.Reader, big.NewInt(int64(len(messages))))
 	if err != nil {
 		index = big.NewInt(0)

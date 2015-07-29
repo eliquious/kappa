@@ -111,7 +111,9 @@ func handleSessionRequests(logger log.Logger, channel ssh.Channel, requests <-ch
 
 func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.System, user datamodel.User) {
 	defer channel.Close()
-	term := terminal.NewTerminal(channel, "kappa> ")
+
+	prompt := "kappa> "
+	term := terminal.NewTerminal(channel, prompt)
 
 	// // Try to make the terminal raw
 	// oldState, err := terminal.MakeRaw(0)
@@ -129,19 +131,20 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 
 	// Write login message
 	term.Write([]byte("\r\n\n"))
-	LoginMessage(channel, *term.Escape)
+	GetMessage(channel, *term.Escape)
 	term.Write([]byte("\n"))
 
-	// Create executor
+	// Create query executor
 	executor := Executor{
-		Session: Session{
+		session: Session{
 			namespace: "",
 			user:      user,
-			system:    system,
-			terminal:  term,
 		},
+		terminal: NewTerminal(term, prompt),
+		system:   system,
 	}
 
+	// Start REPL
 	for {
 		input, err := term.ReadLine()
 		if err != nil {
@@ -159,7 +162,7 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 				break
 			} else if line == "quote me" {
 				term.Write([]byte("\r\n"))
-				LoginMessage(channel, *term.Escape)
+				GetMessage(channel, *term.Escape)
 				term.Write([]byte("\r\n"))
 				continue
 			}
@@ -180,13 +183,6 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 			// Execute statements
 			w := ResponseWriter{term.Escape, channel}
 			executor.Execute(&w, stmt)
-
-			// // For now, just echo the successful command in green
-			// logger.Info("Successful Statement", "statement", line)
-			// channel.Write(term.Escape.Green)
-			// channel.Write([]byte(stmt.String()))
-			// channel.Write([]byte("\r\n"))
-			// channel.Write(term.Escape.Reset)
 		}
 	}
 }

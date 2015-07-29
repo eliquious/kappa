@@ -6,18 +6,19 @@ import (
 
 	"github.com/subsilent/kappa/datamodel"
 	"github.com/subsilent/kappa/skl"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
+// Session provides session and connection related information
 type Session struct {
 	namespace string
 	user      datamodel.User
-	system    datamodel.System
-	terminal  *terminal.Terminal
 }
 
+// Executor executes successfully parsed queries
 type Executor struct {
-	Session Session
+	session  Session
+	terminal Terminal
+	system   datamodel.System
 }
 
 func (e *Executor) Execute(w *ResponseWriter, stmt skl.Statement) {
@@ -36,14 +37,14 @@ func (e *Executor) handleUseStatement(w *ResponseWriter, stmt skl.Statement) {
 	}
 
 	// Get user from session
-	user := e.Session.user
+	user := e.session.user
 	if user == nil {
 		w.Fail(InternalServerError, "could not access user data")
 		return
 	}
 
 	// Get namespace store
-	namespaceStore, err := e.Session.system.Namespaces()
+	namespaceStore, err := e.system.Namespaces()
 	if err != nil {
 		w.Fail(InternalServerError, "could not access namespace data")
 		return
@@ -61,8 +62,8 @@ func (e *Executor) handleUseStatement(w *ResponseWriter, stmt skl.Statement) {
 
 	// If the user is an admin, grant access
 	if user.IsAdmin() {
-		e.Session.namespace = use.Name
-		e.Session.terminal.SetPrompt(fmt.Sprintf("kappa: %s> ", use.Name))
+		e.session.namespace = use.Name
+		e.terminal.SetPrompt(fmt.Sprintf("kappa: %s> ", use.Name))
 		w.Success(OK, "")
 		return
 	}
@@ -72,8 +73,8 @@ func (e *Executor) handleUseStatement(w *ResponseWriter, stmt skl.Statement) {
 	// 		Otherwise, return access denied error
 	for _, namespace := range user.Namespaces() {
 		if namespace == use.Name {
-			e.Session.namespace = use.Name
-			e.Session.terminal.SetPrompt(fmt.Sprintf("kappa: %s> ", use.Name))
+			e.session.namespace = use.Name
+			e.terminal.SetPrompt(fmt.Sprintf("kappa: %s> ", use.Name))
 			w.Success(OK, "")
 			return
 		}
