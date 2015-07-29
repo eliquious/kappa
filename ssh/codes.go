@@ -2,20 +2,39 @@ package ssh
 
 type StatusCode int
 
+// Success codes
 const (
-	OK                    StatusCode = 2000
-	Unauthorized          StatusCode = 4001
-	InternalServerError   StatusCode = 5000
-	InvalidStatementType  StatusCode = 5001
-	NamespaceDoesNotExist StatusCode = 5002
-	UserDoesNotExist      StatusCode = 5003
+	OK StatusCode = 2000
+)
+
+// Authentication related error codes
+const (
+	Unauthorized StatusCode = iota + 4000
+)
+
+// Error codes
+const (
+	InternalServerError StatusCode = iota + 5000
+	InvalidStatementType
+	NamespaceDoesNotExist
+	UserDoesNotExist
+	NamespaceAlreadyExists
+	UserAlreadyExists
 )
 
 var statusCodes = map[StatusCode]string{
-	OK:                    "OK",
-	Unauthorized:          "Unauthorized",
-	InternalServerError:   "InternalServerError",
-	InvalidStatementType:  "InvalidStatementType",
-	NamespaceDoesNotExist: "NamespaceDoesNotExist",
-	UserDoesNotExist:      "UserDoesNotExist",
+
+	// Success
+	OK: "OK",
+
+	// Security errors
+	Unauthorized: "Unauthorized",
+
+	// General errors
+	InternalServerError:    "InternalServerError",
+	InvalidStatementType:   "InvalidStatementType",
+	NamespaceDoesNotExist:  "NamespaceDoesNotExist",
+	UserDoesNotExist:       "UserDoesNotExist",
+	NamespaceAlreadyExists: "NamespaceAlreadyExists",
+	UserAlreadyExists:      "UserAlreadyExists",
 }

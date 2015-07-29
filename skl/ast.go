@@ -6,7 +6,8 @@ import "bytes"
 type NodeType int
 
 const (
-	UseStatementType NodeType = iota
+	UseNamespaceType    NodeType = iota
+	CreateNamespaceType NodeType = iota
 )
 
 // Node is an interface for AST nodes
@@ -32,19 +33,48 @@ type Statement interface {
 
 // UseStatement represents the USE statement
 type UseStatement struct {
-	Name string
+	name string
+}
+
+// Namespace returns the namespace being requested
+func (u UseStatement) Namespace() string {
+	return u.name
 }
 
 // String returns a string representation
 func (s UseStatement) String() string {
 	var buf bytes.Buffer
 	buf.WriteString("USE ")
-	buf.WriteString(s.Name)
+	buf.WriteString(s.name)
 	return buf.String()
 }
 
 // NodeType returns an NodeType id
-func (s UseStatement) NodeType() NodeType { return UseStatementType }
+func (s UseStatement) NodeType() NodeType { return UseNamespaceType }
 
 // RequiredPermissions returns the required permissions in order to use this command
 func (s UseStatement) RequiredPermissions() []string { return []string{} }
+
+// CreateNamespaceStatement represents the CREATE NAMESPACE statement
+type CreateNamespaceStatement struct {
+	name string
+}
+
+// Namespace returns the namespace being requested
+func (s CreateNamespaceStatement) Namespace() string {
+	return s.name
+}
+
+// String returns a string representation
+func (s CreateNamespaceStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("CREATE NAMESPACE ")
+	buf.WriteString(s.name)
+	return buf.String()
+}
+
+// NodeType returns an NodeType id
+func (s CreateNamespaceStatement) NodeType() NodeType { return CreateNamespaceType }
+
+// RequiredPermissions returns the required permissions in order to use this command
+func (s CreateNamespaceStatement) RequiredPermissions() []string { return []string{"create.namespace"} }

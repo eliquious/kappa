@@ -32,7 +32,7 @@ func ParseStatement(s string) (Statement, error) {
 	return NewParser(strings.NewReader(s)).ParseStatement()
 }
 
-// ParseStatement parses an InfluxQL string and returns a Statement AST object.
+// ParseStatement parses a string and returns a Statement AST object.
 func (p *Parser) ParseStatement() (Statement, error) {
 
 	// Inspect the first token.
@@ -40,8 +40,10 @@ func (p *Parser) ParseStatement() (Statement, error) {
 	switch tok {
 	case USE:
 		return p.parseUseStatement()
+	case CREATE:
+		return p.parseCreateStatement()
 	default:
-		return nil, newParseError(tokstr(tok, lit), []string{"USE"}, pos)
+		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE"}, pos)
 	}
 }
 
@@ -55,7 +57,36 @@ func (p *Parser) parseUseStatement() (*UseStatement, error) {
 	if err != nil {
 		return nil, err
 	}
-	stmt.Name = lit
+	stmt.name = lit
+
+	return stmt, nil
+}
+
+// parseCreateStatement parses an InfluxQL string and returns a Statement AST object.
+// This function assumes the "CREATE" token has already been consumed.
+func (p *Parser) parseCreateStatement() (Statement, error) {
+
+	// Inspect the first token.
+	tok, pos, lit := p.scanIgnoreWhitespace()
+	switch tok {
+	case NAMESPACE:
+		return p.parseCreateNamespaceStatement()
+	default:
+		return nil, newParseError(tokstr(tok, lit), []string{"NAMESPACE"}, pos)
+	}
+}
+
+// parseCreateNamespaceStatement parses a string and returns a CreateNamespaceStatement.
+// This function assumes the "CREATE" token has already been consumed.
+func (p *Parser) parseCreateNamespaceStatement() (*CreateNamespaceStatement, error) {
+	stmt := &CreateNamespaceStatement{}
+
+	// Parse the name of the namespace to be used
+	lit, err := p.parseNamespace()
+	if err != nil {
+		return nil, err
+	}
+	stmt.name = lit
 
 	return stmt, nil
 }
