@@ -20,6 +20,10 @@
 			"Rev": "29bf17f9f892973ce1fadd669d8ab1f372e9a495"
 		},
 		{
+			"ImportPath": "github.com/eliquious/lexer",
+			"Rev": "ce9541d1c70a08475d2c0fc8ce0bf3ecaf26f017"
+		},
+		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
