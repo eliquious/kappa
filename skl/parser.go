@@ -76,7 +76,11 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 	}
 }
 
+<<<<<<< Updated upstream
 // parseCreateNamespaceStatement parses a string and returns a CreateNamespaceStatement.
+=======
+// parseCreateNamespaceStat5ement parses a string and returns a CreateNamespaceStatement.
+>>>>>>> Stashed changes
 // This function assumes the "CREATE" token has already been consumed.
 func (p *Parser) parseCreateNamespaceStatement() (*CreateNamespaceStatement, error) {
 	stmt := &CreateNamespaceStatement{}

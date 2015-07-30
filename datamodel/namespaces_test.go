@@ -90,7 +90,7 @@ func (suite *NamespaceTestSuite) TestCreateKeyspace() {
 }
 
 // TestGetKeyspace ensures a namespace can be created
-func (suite *NamespaceTestSuite) TestGetKeyspace() {
+func (suite *NamespaceTestSuite) TestGetKeyspaceError() {
 
     // Get the namespace
     ns, err := suite.NS.Get("acme.none")
@@ -102,6 +102,22 @@ func (suite *NamespaceTestSuite) TestGetKeyspace() {
 
         b := bkt.Bucket([]byte("acme.none"))
         suite.Nil(b)
+    })
+}
+
+// TestGetKeyspace ensures a namespace can be created
+func (suite *NamespaceTestSuite) TestGetKeyspace() {
+
+    // Get the namespace
+    ns, err := suite.NS.Get("acme")
+    suite.Nil(err)
+    suite.NotNil(ns)
+
+    // Test that the namespace does not exist afterwards
+    suite.KS.ReadTx(func(bkt *bolt.Bucket) {
+
+        b := bkt.Bucket([]byte("acme"))
+        suite.NotNil(b)
     })
 }
 
@@ -842,4 +858,51 @@ func (suite *NamespaceTestSuite) TestHasPermissionsRoleDoesNotExist() {
     // Test permissions
     allow := ns.HasPermission("guest", "select")
     suite.False(allow)
+}
+
+func (suite *NamespaceTestSuite) TestCreateChildInvalidParent() {
+    name := "acme.fake"
+
+    // Create namespace
+    ns := boltNamespace{[]byte(name), suite.KS}
+
+    child, err := ns.CreateChild("acme.child")
+    suite.NotNil(err)
+    suite.Nil(child)
+}
+
+func (suite *NamespaceTestSuite) TestCreateChild() {
+    name := "acme.create.child.parent"
+
+    // Create namespace
+    ns, _ := suite.createNamespace(name)
+    ns.AddRole("admin")
+    ns.GrantPermissions("admin", "create.namespace")
+
+    ns.AddRole("dev")
+    ns.GrantPermissions("dev", "create.log")
+
+    ns.AddUser("marvin.martian")
+    ns.AddUser("bugs.bunny")
+
+    // Test that the namespace was created
+    suite.verifyNamespaceExists(name)
+
+    // Create child namespace
+    child, err := ns.CreateChild("acme.create.child.parent")
+    suite.Nil(err)
+
+    // Check users
+    suite.True(child.HasAccess("marvin.martian"))
+    suite.True(child.HasAccess("bugs.bunny"))
+
+    // Check roles
+    roles := child.Roles()
+    suite.Equal(2, len(roles))
+    suite.Equal("admin", roles[0])
+    suite.Equal("dev", roles[1])
+
+    // Check permissions
+    suite.True(child.HasPermission("admin", "create.namespace"))
+    suite.True(child.HasPermission("dev", "create.log"))
 }

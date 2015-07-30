@@ -71,6 +71,10 @@ func (suite *ParserTestSuite) TestUseStatement() {
 		{s: `USE `, err: `found EOF, expected namespace at line 1, char 6`},
 		{s: `USE acme.example.`, err: `found EOF, expected identifier at line 1, char 18`},
 		{s: `USE acme.example. `, err: `found WS, expected identifier at line 1, char 18`},
+<<<<<<< Updated upstream
+=======
+		{s: `USE .example`, err: `found ., expected namespace at line 1, char 5`},
+>>>>>>> Stashed changes
 	}
 
 	suite.validate(tests)
@@ -89,6 +93,10 @@ func (suite *ParserTestSuite) TestCreateNamespace() {
 		{s: `CREATE NAMESPACE `, err: `found EOF, expected namespace at line 1, char 19`},
 		{s: `CREATE NAMESPACE acme.example.`, err: `found EOF, expected identifier at line 1, char 31`},
 		{s: `CREATE NAMESPACE acme.example. `, err: `found WS, expected identifier at line 1, char 31`},
+<<<<<<< Updated upstream
+=======
+		{s: `CREATE NAMESPACE .example`, err: `found ., expected namespace at line 1, char 18`},
+>>>>>>> Stashed changes
 	}
 
 	suite.validate(tests)
