@@ -53,7 +53,7 @@ func (suite *ParserTestSuite) TestInvalidStatement() {
 	var tests = []TestCase{
 
 		// Errors
-		{s: `a bad statement.`, err: `found a, expected USE, CREATE at line 1, char 1`},
+		{s: `a bad statement.`, err: `found a, expected USE, CREATE, DROP at line 1, char 1`},
 	}
 
 	suite.validate(tests)
@@ -91,6 +91,25 @@ func (suite *ParserTestSuite) TestCreateNamespace() {
 		{s: `CREATE NAMESPACE acme.example.`, err: `found EOF, expected identifier at line 1, char 31`},
 		{s: `CREATE NAMESPACE acme.example. `, err: `found WS, expected identifier at line 1, char 31`},
 		{s: `CREATE NAMESPACE .example`, err: `found ., expected namespace at line 1, char 18`},
+	}
+
+	suite.validate(tests)
+}
+
+// Ensure the parser can parse strings into DROP NAMESPACE statements
+func (suite *ParserTestSuite) TestDropNamespace() {
+	var tests = []TestCase{
+		{
+			s:    `DROP NAMESPACE acme`,
+			stmt: &DropNamespaceStatement{name: "acme"},
+		},
+
+		// Errors
+		{s: `DROP `, err: `found EOF, expected NAMESPACE at line 1, char 7`},
+		{s: `DROP NAMESPACE `, err: `found EOF, expected namespace at line 1, char 17`},
+		{s: `DROP NAMESPACE acme.example.`, err: `found EOF, expected identifier at line 1, char 29`},
+		{s: `DROP NAMESPACE acme.example. `, err: `found WS, expected identifier at line 1, char 29`},
+		{s: `DROP NAMESPACE .example`, err: `found ., expected namespace at line 1, char 16`},
 	}
 
 	suite.validate(tests)

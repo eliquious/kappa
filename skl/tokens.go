@@ -33,6 +33,7 @@ const (
 	CLUSTERED
 	CREATE
 	DESCRIBE
+	DROP
 	FOR
 	FROM
 	INSERT
@@ -93,6 +94,7 @@ var testKeywords = map[lexer.Token]string{
 	CLUSTERED:   "CLUSTERED",
 	CREATE:      "CREATE",
 	DESCRIBE:    "DESCRIBE",
+	DROP:        "DROP",
 	FOR:         "FOR",
 	FROM:        "FROM",
 	INSERT:      "INSERT",

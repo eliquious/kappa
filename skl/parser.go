@@ -42,8 +42,10 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseUseStatement()
 	case CREATE:
 		return p.parseCreateStatement()
+	case DROP:
+		return p.parseDropStatement()
 	default:
-		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE"}, pos)
+		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE", "DROP"}, pos)
 	}
 }
 
@@ -62,7 +64,7 @@ func (p *Parser) parseUseStatement() (*UseStatement, error) {
 	return stmt, nil
 }
 
-// parseCreateStatement parses an InfluxQL string and returns a Statement AST object.
+// parseCreateStatement parses a string and returns a Statement AST object.
 // This function assumes the "CREATE" token has already been consumed.
 func (p *Parser) parseCreateStatement() (Statement, error) {
 
@@ -80,6 +82,35 @@ func (p *Parser) parseCreateStatement() (Statement, error) {
 // This function assumes the "CREATE" token has already been consumed.
 func (p *Parser) parseCreateNamespaceStatement() (*CreateNamespaceStatement, error) {
 	stmt := &CreateNamespaceStatement{}
+
+	// Parse the name of the namespace to be used
+	lit, err := p.parseNamespace()
+	if err != nil {
+		return nil, err
+	}
+	stmt.name = lit
+
+	return stmt, nil
+}
+
+// parseDropStatement parses a string and returns a Statement AST object.
+// This function assumes the "DROP" token has already been consumed.
+func (p *Parser) parseDropStatement() (Statement, error) {
+
+	// Inspect the first token.
+	tok, pos, lit := p.scanIgnoreWhitespace()
+	switch tok {
+	case NAMESPACE:
+		return p.parseDropNamespaceStatement()
+	default:
+		return nil, newParseError(tokstr(tok, lit), []string{"NAMESPACE"}, pos)
+	}
+}
+
+// parseDropNamespaceStat5ement parses a string and returns a DropNamespaceStatement.
+// This function assumes the "DROP" token has already been consumed.
+func (p *Parser) parseDropNamespaceStatement() (*DropNamespaceStatement, error) {
+	stmt := &DropNamespaceStatement{}
 
 	// Parse the name of the namespace to be used
 	lit, err := p.parseNamespace()
