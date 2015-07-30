@@ -46,6 +46,9 @@ type Namespace interface {
 
 	// Users returns a list of authorized users
 	Users() []string
+
+	// CreateChild makes a new child namespace with the same users and roles
+	CreateChild(child string) (Namespace, error)
 }
 
 // NamespaceStore contains namespace information
@@ -84,8 +87,19 @@ func (b boltNamespaceStore) Create(name string) (ns Namespace, err error) {
 }
 
 // Get returns a Namespace, creating it if doesn't exist
-func (b boltNamespaceStore) Get(name string) (Namespace, error) {
-	return b.Create(name)
+func (b boltNamespaceStore) Get(name string) (ns Namespace, err error) {
+	b.ks.ReadTx(func(bkt *bolt.Bucket) {
+
+		// Get user bucket
+		nsBucket := bkt.Bucket([]byte(name))
+		if nsBucket == nil {
+			err = ErrNamespaceDoesNotExist
+			return
+		}
+		ns = boltNamespace{[]byte(name), b.ks}
+		return
+	})
+	return
 }
 
 // Delete removes a namespace from the database
@@ -381,6 +395,53 @@ func (b boltNamespace) HasPermission(role string, permission string) (allow bool
 			}
 		}
 
+		return
+	})
+	return
+}
+
+func (b boltNamespace) CreateChild(child string) (sub Namespace, e error) {
+	b.namespaces.WriteTx(func(bkt *bolt.Bucket) {
+
+		// Get namespace bucket
+		parent := bkt.Bucket(b.name)
+		if parent == nil {
+			e = ErrNamespaceDoesNotExist
+			return
+		}
+
+		// Create child namespace bucket
+		childBucket, err := bkt.CreateBucketIfNotExists([]byte(child))
+		if err != nil {
+			e = err
+			return
+		}
+
+		// Get roles bucket
+		parentRoles, err := parent.CreateBucketIfNotExists([]byte("roles"))
+		if err != nil {
+			e = err
+			return
+		}
+
+		// Create child roles bucket
+		childRoles, err := childBucket.CreateBucketIfNotExists([]byte("roles"))
+		if err != nil {
+			e = err
+			return
+		}
+
+		// Copy parent roles into child
+		parentRoles.ForEach(func(k []byte, v []byte) error {
+			return childRoles.Put(k, v)
+		})
+
+		// Copy users
+		users := parent.Get([]byte("users"))
+		childBucket.Put([]byte(users), users)
+
+		// Create sub namespace
+		sub = &boltNamespace{[]byte(child), b.namespaces}
 		return
 	})
 	return

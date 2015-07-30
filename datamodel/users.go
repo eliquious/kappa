@@ -60,6 +60,12 @@ type PublicKeyRing interface {
 // User represents a database user
 type User interface {
 
+    // Username returns the user alias
+    Username() string
+
+    // IsAdmin returns whether the user has admin priviliges
+    IsAdmin() bool
+
     // ValidatePassword determines the validity of a password.
     ValidatePassword(password string) bool
 
@@ -131,7 +137,7 @@ func (b boltUserStore) Get(name string) (u User, err error) {
         u = boltUser{[]byte(name), b.ks}
         return
     })
-    return b.Create(name)
+    return
 }
 
 // Delete removes a user from the database
@@ -149,6 +155,16 @@ func (b boltUserStore) Delete(name string) (err error) {
 type boltUser struct {
     name  []byte
     users leaf.Keyspace
+}
+
+// IsAdmin returns whether the user is an admin
+func (b boltUser) IsAdmin() bool {
+    return string(b.name) == "admin"
+}
+
+// Username returns the user alias
+func (b boltUser) Username() string {
+    return string(b.name)
 }
 
 // ValidatePassword determines the validity of a password.

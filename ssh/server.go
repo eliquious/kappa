@@ -88,6 +88,7 @@ func NewSSHServer(logger log.Logger, sys datamodel.System, privateKey ssh.Signer
 	server.logger = logger
 	server.sshConfig = sshConfig
 	server.listener = listener
+	server.system = sys
 	return
 }
 
@@ -95,6 +96,7 @@ type SSHServer struct {
 	logger    log.Logger
 	sshConfig *ssh.ServerConfig
 	listener  *net.TCPListener
+	system    datamodel.System
 	done      chan bool
 }
 
@@ -132,7 +134,7 @@ func (s *SSHServer) Run(logger log.Logger, closer chan<- bool) {
 
 				// Handle connection
 				l.Debug("Successful SSH connection")
-				go handleTCPConnection(l, tcpConn, config)
+				go handleTCPConnection(l, tcpConn, config, s.system)
 			}
 		}
 	}(logger, s.listener, s.sshConfig, s.done, closer)
