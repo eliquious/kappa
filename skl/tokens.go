@@ -38,28 +38,35 @@ const (
 	INSERT
 	LIMIT
 	LOG
+	LOGS
 	NAMESPACE
+	NAMESPACES
 	OFFSET
 	ON
 	OPTIONAL
 	OPTIONS
 	PASSWORD
 	PERMISSION
+	PERMISSIONS
 	REMOVE
 	REQUIRED
 	ROLE
+	ROLES
 	SELECT
 	SET
 	SHOW
 	SUBSCRIBE
 	TO
 	TYPE
+	TYPES
 	UNSUBSCRIBE
 	UPDATE
 	USE
 	USER
+	USERS
 	USING
 	VIEW
+	VIEWS
 	WHERE
 	WITH
 	endKeywords
@@ -91,28 +98,35 @@ var testKeywords = map[lexer.Token]string{
 	INSERT:      "INSERT",
 	LIMIT:       "LIMIT",
 	LOG:         "LOG",
+	LOGS:        "LOGS",
 	NAMESPACE:   "NAMESPACE",
+	NAMESPACES:  "NAMESPACES",
 	OFFSET:      "OFFSET",
 	ON:          "ON",
 	OPTIONAL:    "OPTIONAL",
 	OPTIONS:     "OPTIONS",
 	PASSWORD:    "PASSWORD",
 	PERMISSION:  "PERMISSION",
+	PERMISSIONS: "PERMISSIONS",
 	REMOVE:      "REMOVE",
 	REQUIRED:    "REQUIRED",
 	ROLE:        "ROLE",
+	ROLES:       "ROLES",
 	SELECT:      "SELECT",
 	SET:         "SET",
 	SHOW:        "SHOW",
 	SUBSCRIBE:   "SUBSCRIBE",
 	TO:          "TO",
 	TYPE:        "TYPE",
+	TYPES:       "TYPES",
 	UNSUBSCRIBE: "UNSUBSCRIBE",
 	UPDATE:      "UPDATE",
 	USE:         "USE",
 	USER:        "USER",
+	USERS:       "USERS",
 	USING:       "USING",
 	VIEW:        "VIEW",
+	VIEWS:       "VIEWS",
 	WHERE:       "WHERE",
 	WITH:        "WITH",
 }
