@@ -62,6 +62,9 @@ type NamespaceStore interface {
 
 	// Delete removes a namespace
 	Delete(name string) error
+
+	// Stream returns a channel of namespaces
+	Stream() chan string
 }
 
 // NewBoltNamespaceStore creates a new NamespaceStore using the given keyspace
@@ -90,7 +93,7 @@ func (b boltNamespaceStore) Create(name string) (ns Namespace, err error) {
 func (b boltNamespaceStore) Get(name string) (ns Namespace, err error) {
 	b.ks.ReadTx(func(bkt *bolt.Bucket) {
 
-		// Get user bucket
+		// Get namespace bucket
 		nsBucket := bkt.Bucket([]byte(name))
 		if nsBucket == nil {
 			err = ErrNamespaceDoesNotExist
@@ -100,6 +103,28 @@ func (b boltNamespaceStore) Get(name string) (ns Namespace, err error) {
 		return
 	})
 	return
+}
+
+// Stream returns a channel of namespace names
+func (b boltNamespaceStore) Stream() chan string {
+	out := make(chan string)
+
+	// Read namespaces in background
+	go func(channel chan<- string) {
+		b.ks.ReadTx(func(bkt *bolt.Bucket) {
+			cur := bkt.Cursor()
+
+			// Iterate over keys
+			for k, _ := cur.First(); k != nil; k, _ = cur.Next() {
+				channel <- string(k)
+			}
+
+			// Close channel
+			close(channel)
+			return
+		})
+	}(out)
+	return out
 }
 
 // Delete removes a namespace from the database
@@ -115,7 +140,7 @@ func (b boltNamespaceStore) Delete(name string) (err error) {
 
 // boltNamespace implements the Namespace interface on top of boltdb
 //
-// Each namespace has a bucket in the keyspace. Inside each bucket, there is a key for users and another bucket for roles. The user key contains a comma dlimited array of usernames. The interior roles bucket contains keys for each role and a comma delimited list of permissions.
+// Each namespace has a bucket in the keyspace. Inside each bucket, there is a key for users and another bucket for roles. The user key contains a comma delimited array of usernames. The interior roles bucket contains keys for each role and a comma delimited list of permissions.
 type boltNamespace struct {
 	name       []byte
 	namespaces leaf.Keyspace
