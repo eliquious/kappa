@@ -131,7 +131,7 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 
 	// Write login message
 	term.Write([]byte("\r\n\n"))
-	GetMessage(channel, *term.Escape)
+	GetMessage(channel, DefaultColorCodes)
 	term.Write([]byte("\n"))
 
 	// Create query executor
@@ -162,7 +162,7 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 				break
 			} else if line == "quote me" {
 				term.Write([]byte("\r\n"))
-				GetMessage(channel, *term.Escape)
+				GetMessage(channel, DefaultColorCodes)
 				term.Write([]byte("\r\n"))
 				continue
 			}
@@ -181,7 +181,7 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 			}
 
 			// Execute statements
-			w := ResponseWriter{term.Escape, channel}
+			w := ResponseWriter{DefaultColorCodes, channel}
 			executor.Execute(&w, stmt)
 		}
 	}

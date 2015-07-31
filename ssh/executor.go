@@ -36,6 +36,8 @@ func (e *Executor) Execute(w *ResponseWriter, stmt skl.Statement) {
 		e.handleUseStatement(w, stmt)
 	case skl.CreateNamespaceType:
 		e.handleCreateNamespace(w, stmt)
+	case skl.ShowNamespaceType:
+		e.handleShowNamespace(w, stmt)
 	}
 }
 
@@ -192,6 +194,45 @@ func (e *Executor) handleCreateNamespace(w *ResponseWriter, stmt skl.Statement) 
 	}
 
 	w.Success(OK, "namespace created")
+}
+
+func (e *Executor) handleShowNamespace(w *ResponseWriter, stmt skl.Statement) {
+
+	_, ok := stmt.(*skl.ShowNamespacesStatement)
+	if !ok {
+		w.Fail(InvalidStatementType, "expected *ShowNamespacesStatement, got %s instead", reflect.TypeOf(stmt))
+		return
+	}
+
+	// Get session user
+	user := e.session.user
+	if user.IsAdmin() {
+
+		// Get namespace store
+		namespaceStore, err := e.system.Namespaces()
+		if err != nil {
+			w.Fail(InternalServerError, "could not access namespace data")
+			return
+		}
+
+		// Stream namespaces
+		w.Write(w.Colors.LightYellow)
+		namespaces := namespaceStore.Stream()
+		for name := range namespaces {
+			w.Write([]byte(" " + name + "\r\n"))
+		}
+		w.Write(w.Colors.Reset)
+	} else {
+
+		// List namespaces
+		w.Write(w.Colors.Yellow)
+		for _, name := range user.Namespaces() {
+			w.Write([]byte(" " + name + "\r\n"))
+		}
+		w.Write(w.Colors.Reset)
+	}
+
+	w.Success(OK, "")
 }
 
 // namespaceAlreadyExists determines if a namespace already exists...
