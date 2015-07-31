@@ -4,19 +4,17 @@ import (
 	"crypto/rand"
 	"io"
 	"math/big"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 type Message interface {
-	Write(w io.Writer, colors terminal.EscapeCodes)
+	Write(w io.Writer, colors ColorCodes)
 }
 
 type SimpleMessage struct {
 	Text string
 }
 
-func (s SimpleMessage) Write(w io.Writer, colors terminal.EscapeCodes) {
+func (s SimpleMessage) Write(w io.Writer, colors ColorCodes) {
 	w.Write([]byte(" " + s.Text + "\r\n"))
 }
 
@@ -27,7 +25,7 @@ type Quote struct {
 	Text   string
 }
 
-func (q Quote) Write(w io.Writer, colors terminal.EscapeCodes) {
+func (q Quote) Write(w io.Writer, colors ColorCodes) {
 	w.Write(q.Color)
 	w.Write([]byte(" " + q.Author))
 	w.Write(colors.Reset)
@@ -41,7 +39,7 @@ type Conversation struct {
 }
 
 // Write actually writes the message to the terminal
-func (c Conversation) Write(w io.Writer, colors terminal.EscapeCodes) {
+func (c Conversation) Write(w io.Writer, colors ColorCodes) {
 	for _, q := range c.Quotes {
 		q.Write(w, colors)
 	}
@@ -49,16 +47,16 @@ func (c Conversation) Write(w io.Writer, colors terminal.EscapeCodes) {
 }
 
 // LoginMessage writes a message at login
-func GetMessage(w io.Writer, colors terminal.EscapeCodes) {
+func GetMessage(w io.Writer, colors ColorCodes) {
 	var messages = []Message{
 		SimpleMessage{"Welcome to Kappa DB, Yo!"},
-		Quote{colors.Magenta, "Jessy Pinkman", "Yeah, Bitch! Magnets!"},
-		Quote{colors.Magenta, "Jessy Pinkman", "Yeah, Science!"},
-		Quote{colors.Blue, "Saul Goodman", "Better call Saul."},
+		Quote{colors.LightMagenta, "Jessy Pinkman", "Yeah, Bitch! Magnets!"},
+		Quote{colors.LightMagenta, "Jessy Pinkman", "Yeah, Science!"},
+		Quote{colors.LightBlue, "Saul Goodman", "Better call Saul."},
 		Conversation{
 			Quotes: []Quote{
-				Quote{colors.Green, "Walter White", "One particular element comes to mind..."},
-				Quote{colors.Magenta, "Jessy Pinkman", "Ohhhhh... wire.."},
+				Quote{colors.LightGreen, "Walter White", "One particular element comes to mind..."},
+				Quote{colors.LightMagenta, "Jessy Pinkman", "Ohhhhh... wire.."},
 			},
 		},
 	}
