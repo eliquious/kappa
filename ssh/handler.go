@@ -165,6 +165,12 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 				GetMessage(channel, DefaultColorCodes)
 				term.Write([]byte("\r\n"))
 				continue
+			} else if strings.HasPrefix(line, "//") || strings.HasPrefix(line, "--") {
+
+				channel.Write(DefaultColorCodes.LightGrey)
+				channel.Write([]byte(line + "\r\n"))
+				channel.Write(DefaultColorCodes.Reset)
+				continue
 			}
 
 			// Parse statement
@@ -173,10 +179,10 @@ func startTerminal(logger log.Logger, channel ssh.Channel, system datamodel.Syst
 			// Return parse error in red
 			if err != nil {
 				logger.Warn("Bad Statement", "statement", line, "error", err)
-				channel.Write(term.Escape.Red)
+				channel.Write(DefaultColorCodes.LightRed)
 				channel.Write([]byte(err.Error()))
 				channel.Write([]byte("\r\n"))
-				channel.Write(term.Escape.Reset)
+				channel.Write(DefaultColorCodes.Reset)
 				continue
 			}
 
