@@ -42,8 +42,10 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseUseStatement()
 	case CREATE:
 		return p.parseCreateStatement()
+	case SHOW:
+		return p.parseShowStatement()
 	default:
-		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE"}, pos)
+		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE", "SHOW"}, pos)
 	}
 }
 
@@ -89,6 +91,20 @@ func (p *Parser) parseCreateNamespaceStatement() (*CreateNamespaceStatement, err
 	stmt.name = lit
 
 	return stmt, nil
+}
+
+// parseShowStatement parses a string and returns a Statement AST object.
+// This function assumes the "SHOW" token has already been consumed.
+func (p *Parser) parseShowStatement() (Statement, error) {
+
+	// Inspect the first token.
+	tok, pos, lit := p.scanIgnoreWhitespace()
+	switch tok {
+	case NAMESPACES:
+		return &ShowNamespacesStatement{}, nil
+	default:
+		return nil, newParseError(tokstr(tok, lit), []string{"NAMESPACES"}, pos)
+	}
 }
 
 // parseNamespace returns a namespace title or an error

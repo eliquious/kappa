@@ -11,6 +11,7 @@ type NodeType int
 const (
 	UseNamespaceType    NodeType = iota
 	CreateNamespaceType NodeType = iota
+	ShowNamespaceType   NodeType = iota
 )
 
 // Node is an interface for AST nodes
@@ -86,3 +87,20 @@ func (s CreateNamespaceStatement) NodeType() NodeType { return CreateNamespaceTy
 
 // RequiredPermissions returns the required permissions in order to use this command
 func (s CreateNamespaceStatement) RequiredPermissions() string { return "create.namespace" }
+
+// CreateNamespaceStatement represents the SHOW NAMESPACES statement
+type ShowNamespacesStatement struct {
+}
+
+// String returns a string representation
+func (s ShowNamespacesStatement) String() string {
+	var buf bytes.Buffer
+	buf.WriteString("SHOW NAMESPACES")
+	return buf.String()
+}
+
+// NodeType returns an NodeType id
+func (s ShowNamespacesStatement) NodeType() NodeType { return ShowNamespaceType }
+
+// RequiredPermissions returns the required permissions in order to use this command
+func (s ShowNamespacesStatement) RequiredPermissions() string { return "show.namespaces" }
