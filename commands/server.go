@@ -127,6 +127,8 @@ var ServerCmd = &cobra.Command{
 
 		// Wait for signal
 		logger.Info("Ready to serve requests")
+
+		// Block until signal is received
 		<-sig
 
 		// Shut down SSH server

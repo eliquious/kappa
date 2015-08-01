@@ -44,8 +44,10 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseCreateStatement()
 	case DROP:
 		return p.parseDropStatement()
+	case SHOW:
+		return p.parseShowStatement()
 	default:
-		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE", "DROP"}, pos)
+		return nil, newParseError(tokstr(tok, lit), []string{"USE", "CREATE", "SHOW", "DROP"}, pos)
 	}
 }
 
@@ -96,7 +98,6 @@ func (p *Parser) parseCreateNamespaceStatement() (*CreateNamespaceStatement, err
 // parseDropStatement parses a string and returns a Statement AST object.
 // This function assumes the "DROP" token has already been consumed.
 func (p *Parser) parseDropStatement() (Statement, error) {
-
 	// Inspect the first token.
 	tok, pos, lit := p.scanIgnoreWhitespace()
 	switch tok {
@@ -120,6 +121,20 @@ func (p *Parser) parseDropNamespaceStatement() (*DropNamespaceStatement, error) 
 	stmt.name = lit
 
 	return stmt, nil
+}
+
+// parseShowStatement parses a string and returns a Statement AST object.
+// This function assumes the "SHOW" token has already been consumed.
+func (p *Parser) parseShowStatement() (Statement, error) {
+
+	// Inspect the first token.
+	tok, pos, lit := p.scanIgnoreWhitespace()
+	switch tok {
+	case NAMESPACES:
+		return &ShowNamespacesStatement{}, nil
+	default:
+		return nil, newParseError(tokstr(tok, lit), []string{"NAMESPACES"}, pos)
+	}
 }
 
 // parseNamespace returns a namespace title or an error

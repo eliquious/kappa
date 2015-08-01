@@ -53,7 +53,7 @@ func (suite *ParserTestSuite) TestInvalidStatement() {
 	var tests = []TestCase{
 
 		// Errors
-		{s: `a bad statement.`, err: `found a, expected USE, CREATE, DROP at line 1, char 1`},
+		{s: `a bad statement.`, err: `found a, expected USE, CREATE, SHOW, DROP at line 1, char 1`},
 	}
 
 	suite.validate(tests)
@@ -110,6 +110,22 @@ func (suite *ParserTestSuite) TestDropNamespace() {
 		{s: `DROP NAMESPACE acme.example.`, err: `found EOF, expected identifier at line 1, char 29`},
 		{s: `DROP NAMESPACE acme.example. `, err: `found WS, expected identifier at line 1, char 29`},
 		{s: `DROP NAMESPACE .example`, err: `found ., expected namespace at line 1, char 16`},
+	}
+
+	suite.validate(tests)
+}
+
+// Ensure the parser can parse strings into SHOW NAMESPACES statements
+func (suite *ParserTestSuite) TestShowNamespaces() {
+	var tests = []TestCase{
+		{
+			s:    `SHOW NAMESPACES`,
+			stmt: &ShowNamespacesStatement{},
+		},
+
+		// Errors
+		{s: `SHOW `, err: `found EOF, expected NAMESPACES at line 1, char 7`},
+		{s: `SHOW NAMESPACE`, err: `found NAMESPACE, expected NAMESPACES at line 1, char 6`},
 	}
 
 	suite.validate(tests)
