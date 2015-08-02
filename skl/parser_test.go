@@ -138,3 +138,45 @@ func errstring(err error) string {
 	}
 	return ""
 }
+
+func BenchmarkBadStatement(b *testing.B) {
+	stmt := "a bad statement"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
+
+func BenchmarkUseStatement(b *testing.B) {
+	stmt := "USE acme"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
+
+func BenchmarkNestedUseStatement(b *testing.B) {
+	stmt := "USE acme.example.dynamite"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
+
+func BenchmarkCreateNamespaceStatement(b *testing.B) {
+	stmt := "CREATE NAMESPACE acme"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
+
+func BenchmarkDropNamespaceStatement(b *testing.B) {
+	stmt := "DROP NAMESPACE acme"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
+
+func BenchmarkShowNamespacesStatement(b *testing.B) {
+	stmt := "SHOW NAMESPACES"
+	for i := 0; i < b.N; i++ {
+		NewParser(strings.NewReader(stmt)).ParseStatement()
+	}
+}
