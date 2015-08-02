@@ -43,43 +43,43 @@ var DefaultColorCodes = ColorCodes{
 // ResponseWriter writes data and status codes to the client
 type ResponseWriter struct {
 	Colors ColorCodes
-	writer io.WriteCloser
+	Writer io.Writer
 }
 
 func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string, args ...interface{}) {
 
 	// Set color
-	r.writer.Write(color)
+	r.Writer.Write(color)
 
 	// Write error name and code
 	if t, ok := statusCodes[code]; ok {
-		r.writer.Write([]byte(fmt.Sprintf(" %s (%d)", t, int(code))))
+		r.Writer.Write([]byte(fmt.Sprintf(" %s (%d)", t, int(code))))
 	} else {
-		r.writer.Write([]byte(fmt.Sprintf(" Unknown (%d)", int(code))))
+		r.Writer.Write([]byte(fmt.Sprintf(" Unknown (%d)", int(code))))
 	}
 
 	// Write the error message if there is one
 	if len(format) > 0 {
-		r.writer.Write([]byte(": "))
-		fmt.Fprintf(r.writer, format, args...)
+		r.Writer.Write([]byte(": "))
+		fmt.Fprintf(r.Writer, format, args...)
 	}
 
 	// Reset terminal colors
-	r.writer.Write(r.Colors.Reset)
-	r.writer.Write([]byte("\r\n"))
+	r.Writer.Write(r.Colors.Reset)
+	r.Writer.Write([]byte("\r\n"))
 }
 
-// Fail writes the error status code to the writer
+// Fail writes the error status code to the Writer
 func (r *ResponseWriter) Fail(code StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightRed, code, format, args...)
 }
 
-// Success writes the status code to the writer
+// Success writes the status code to the Writer
 func (r *ResponseWriter) Success(code StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightGreen, code, format, args...)
 }
 
-// Write is a pass through function into the underlying writer
+// Write is a pass through function into the underlying Writer
 func (r *ResponseWriter) Write(data []byte) (int, error) {
-	return r.writer.Write(data)
+	return r.Writer.Write(data)
 }
