@@ -1,4 +1,4 @@
-package ssh
+package client
 
 var ASCII = []string{"    d8b",
 	"     ?88",
