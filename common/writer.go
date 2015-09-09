@@ -1,4 +1,4 @@
-package client
+package common
 
 import (
 	"fmt"
@@ -49,7 +49,7 @@ type ResponseWriter struct {
 	StatusCodes map[server.StatusCode]string
 }
 
-func (r *ResponseWriter) colorCode(color []byte, code server.StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string, args ...interface{}) {
 
 	// Set color
 	r.Writer.Write(color)
@@ -73,12 +73,12 @@ func (r *ResponseWriter) colorCode(color []byte, code server.StatusCode, format 
 }
 
 // Fail writes the error status code to the Writer
-func (r *ResponseWriter) Fail(code server.StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) Fail(code StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightRed, code, format, args...)
 }
 
 // Success writes the status code to the Writer
-func (r *ResponseWriter) Success(code server.StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) Success(code StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightGreen, code, format, args...)
 }
 
