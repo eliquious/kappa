@@ -114,7 +114,7 @@ func (s *SSHServer) Run(logger log.Logger, closer chan<- bool) {
 
 			select {
 
-			// Stop server on channel recieve
+			// Stop server on channel receive
 			case <-c:
 				l.Info("Stopping SSH server")
 				complete <- true
