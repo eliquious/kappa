@@ -1,8 +1,10 @@
-package ssh
+package client
 
 import (
 	"fmt"
 	"io"
+
+	"github.com/subsilent/kappa/server"
 )
 
 type ColorCodes struct {
@@ -42,17 +44,18 @@ var DefaultColorCodes = ColorCodes{
 
 // ResponseWriter writes data and status codes to the client
 type ResponseWriter struct {
-	Colors ColorCodes
-	Writer io.Writer
+	Colors      ColorCodes
+	Writer      io.Writer
+	StatusCodes map[server.StatusCode]string
 }
 
-func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) colorCode(color []byte, code server.StatusCode, format string, args ...interface{}) {
 
 	// Set color
 	r.Writer.Write(color)
 
 	// Write error name and code
-	if t, ok := statusCodes[code]; ok {
+	if t, ok := r.StatusCodes[code]; ok {
 		r.Writer.Write([]byte(fmt.Sprintf(" %s (%d)", t, int(code))))
 	} else {
 		r.Writer.Write([]byte(fmt.Sprintf(" Unknown (%d)", int(code))))
@@ -70,12 +73,12 @@ func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string,
 }
 
 // Fail writes the error status code to the Writer
-func (r *ResponseWriter) Fail(code StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) Fail(code server.StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightRed, code, format, args...)
 }
 
 // Success writes the status code to the Writer
-func (r *ResponseWriter) Success(code StatusCode, format string, args ...interface{}) {
+func (r *ResponseWriter) Success(code server.StatusCode, format string, args ...interface{}) {
 	r.colorCode(r.Colors.LightGreen, code, format, args...)
 }
 
