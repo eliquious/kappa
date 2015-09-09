@@ -25,3 +25,5 @@ _testmain.go
 data/
 pki/
 kappa
+coverage.out
+coverage.html
