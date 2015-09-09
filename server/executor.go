@@ -1,10 +1,11 @@
-package ssh
+package server
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/subsilent/kappa/client"
 	"github.com/subsilent/kappa/datamodel"
 	"github.com/subsilent/kappa/skl"
 )
@@ -18,7 +19,7 @@ type Session struct {
 // Executor executes successfully parsed queries
 type Executor struct {
 	session  Session
-	terminal Terminal
+	terminal client.Terminal
 	system   datamodel.System
 }
 
