@@ -1,4 +1,4 @@
-package ssh
+package server
 
 type StatusCode int
 
