@@ -3,8 +3,6 @@ package common
 import (
 	"fmt"
 	"io"
-
-	"github.com/subsilent/kappa/server"
 )
 
 type ColorCodes struct {
@@ -44,9 +42,8 @@ var DefaultColorCodes = ColorCodes{
 
 // ResponseWriter writes data and status codes to the client
 type ResponseWriter struct {
-	Colors      ColorCodes
-	Writer      io.Writer
-	StatusCodes map[server.StatusCode]string
+	Colors ColorCodes
+	Writer io.Writer
 }
 
 func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string, args ...interface{}) {
@@ -55,7 +52,7 @@ func (r *ResponseWriter) colorCode(color []byte, code StatusCode, format string,
 	r.Writer.Write(color)
 
 	// Write error name and code
-	if t, ok := r.StatusCodes[code]; ok {
+	if t, ok := statusCodes[code]; ok {
 		r.Writer.Write([]byte(fmt.Sprintf(" %s (%d)", t, int(code))))
 	} else {
 		r.Writer.Write([]byte(fmt.Sprintf(" Unknown (%d)", int(code))))
